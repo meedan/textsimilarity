@@ -254,8 +254,9 @@ if __name__ == "__main__":
 
 	#Point cloud kernal
 	print("Word cloud kernal methods (third output is bandwidth)....")
-	gamma_range = np.arange(1,11,1)
-	bw_range    = 1.0/gamma_range[::-1]
+	#gamma_range = np.arange(1,11,1)
+	#bw_range    = 1.0/gamma_range[::-1]
+	bw_range=[0.001,0.01,0.1,0.5,1.0]
 	for bw in bw_range:
 		#print("bw={}".format(bw))
 		x=run_experiment(SAME,DIFF,partial(wordcloud_embed,parser=ENparser,model=gn300model),partial(kernel_correlation_sim,bw=bw))
