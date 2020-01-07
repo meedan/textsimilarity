@@ -43,7 +43,7 @@ import gensim.downloader as api
 from statistics import mean
 from functools import partial
 from scipy.spatial import distance
-
+import numpy as np
 
 def load_data(file):
 	"""Load data from input file
@@ -150,11 +150,7 @@ def run_cr5(same,diff,preprocess_fun):
 	# You will also need to download some language embeddings from the same location and gunzip the files.
 	# I saved the embeddings in a folder called models in ../Cr5/models
 
-	#TODO: Commented imports were in Cr5 example file but are *probably* not needed. Remove if code runs.
-	#import numpy as np
 	from cr5 import Cr5_Model
-	#from collections import Counter
-
 
 	# path_to_pretrained_model, model_prefix
 	cr5_model = Cr5_Model('../Cr5/models/','joint_28')
@@ -163,12 +159,67 @@ def run_cr5(same,diff,preprocess_fun):
 
 	return run_experiment(same,diff,preprocess_fun,partial(cr5_dist,model=cr5_model),inverse=True)
 
-
 def cr5_dist(stmt1,stmt2,model):
 	s1_embedding = model.get_document_embedding(stmt1, 'en')
 	s2_embedding = model.get_document_embedding(stmt2, 'en')
 
 	return float(distance.cosine(s1_embedding, s2_embedding))
+
+#
+# Point cloud methods
+#
+def avg_sim_between_point_clouds(embeddings1, embeddings2):
+	"""for all points in a point cloud (all token vectors in a caption),
+		search the nearest point in the reference cloud
+		and compute their (euclidean) distance,
+		then take the average.
+		
+		This is similar to every iteration during Iterative Closest Point:
+		https://en.wikipedia.org/wiki/Point_set_registration#Iterative_closest_point
+		Besl, Paul; McKay, Neil (1992). "A Method for Registration of 3-D Shapes". IEEE Transactions on Pattern Analysis and Machine Intelligence. 14 (2): 239–256. doi:10.1109/34.121791.
+	"""
+
+    # Make cosine_scores_matrix
+	tgt_emb = embeddings2   
+	cosine_scores = np.array([ (tgt_emb / np.linalg.norm(tgt_emb, 2, 1)[:, None]).dot(word_emb / np.linalg.norm(word_emb))
+		for word_emb in embeddings1 ])
+
+	total_similarity = 0.0
+	for row in cosine_scores:
+		total_similarity += max(row).round(decimals=10)
+	for col in cosine_scores.T:
+		total_similarity += max(col).round(decimals=10)        
+
+	n_scores = len(embeddings1)+len(embeddings2)
+	
+	return float(total_similarity/n_scores) #Inverted to be sim and not distance
+
+
+def kernel_correlation_sim(embeddings1, embeddings2, bw=None):
+	from sklearn.metrics.pairwise import rbf_kernel
+
+	if bw is None:
+		gamma = 1.0
+	else:
+		gamma = 1.0/bw
+        
+	similarity = rbf_kernel(embeddings1 ,embeddings2, gamma=gamma).sum()
+	normalising  = 0.5*rbf_kernel(embeddings1, embeddings1, gamma=gamma).sum()
+	normalising += 0.5*rbf_kernel(embeddings2, embeddings2, gamma=gamma).sum()
+	return float(similarity/normalising) #Inverted to be sim and not dist
+
+def wordcloud_embed(txt,parser,model):
+	"""Tokenize txt, embed all words, and return a list of these embeddings (a list of lists)"""
+	word_vecs=[]
+	lemmas=preprocess(txt,parser)
+	for l in lemmas:
+		try:
+			vec = model.wv[l]
+			word_vecs.append(vec)
+		except KeyError:
+			# Ignore, if the word doesn't exist in the vocabulary
+			pass
+	return word_vecs
 
 
 if __name__ == "__main__":
@@ -196,7 +247,19 @@ if __name__ == "__main__":
 	x=run_mean_word_cos(SAME,DIFF,stopwords,gn300model)
 	print(x)
 
-	#TODO: Point cloud
+	#Point cloud
+	print("Word cloud average method...")
+	x=run_experiment(SAME,DIFF,partial(wordcloud_embed,parser=ENparser,model=gn300model),avg_sim_between_point_clouds)
+	print(x)
+
+	#Point cloud kernal
+	print("Word cloud kernal methods (third output is bandwidth)....")
+	gamma_range = np.arange(1,11,1)
+	bw_range    = 1.0/gamma_range[::-1]
+	for bw in bw_range:
+		#print("bw={}".format(bw))
+		x=run_experiment(SAME,DIFF,partial(wordcloud_embed,parser=ENparser,model=gn300model),partial(kernel_correlation_sim,bw=bw))
+		print(x+(bw,))
 
 	# Word Mover Distance
 	print("Word mover distance...")
