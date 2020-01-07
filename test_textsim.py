@@ -252,8 +252,8 @@ if __name__ == "__main__":
 	x=run_experiment(SAME,DIFF,partial(wordcloud_embed,parser=ENparser,model=gn300model),avg_sim_between_point_clouds)
 	print(x)
 
-	#Point cloud kernal
-	print("Word cloud kernal methods (third output is bandwidth)....")
+	#Point cloud kernel
+	print("Word cloud kernel methods (third output is bandwidth)....")
 	#gamma_range = np.arange(1,11,1)
 	#bw_range    = 1.0/gamma_range[::-1]
 	bw_range=[0.001,0.01,0.1,0.5,1.0]
