@@ -2,7 +2,7 @@
 #
 """
 This script will compare 5 approaches to semantic text similarity using the 2017  STS SemEval data - http://ixa2.si.ehu.es/stswiki/index.php/Main_Page
-Each sentence pair is rated 0-5. 0 indicates completely different, while 5 indicates identifical (see https://www.aclweb.org/anthology/S17-2001.pdf)
+Each sentence pair is rated 0-5. 0 indicates completely different, while 5 indicates identical (see https://www.aclweb.org/anthology/S17-2001.pdf)
 
 To evaluate these approaches, we take two subsets of the data
 SAME subset - statement pairs with a score >= 4
@@ -23,7 +23,7 @@ The functions we will compare are:
 
 2. Point cloud distance
 	Embed each word in a statement, but do not average them!
-	Instead compute the cosine distance between all cross-statement word pairs (cartesian product)
+	Instead compute the cosine distance between all cross-statement word pairs (Cartesian product)
 	For each word in statement 1, select its minimum distance to a word in statement 2. Sum these distances
 
 3. Word mover distance
@@ -33,7 +33,7 @@ The functions we will compare are:
 	Embed each statement using CR5 and compute the cosine distance
 
 5. Set intersection over set union
-	No word embeddings here. Just plain bag-of-words appoach with no preprocessing
+	No word embeddings here. Just plain bag-of-words approach with no preprocessing
 """
 
 import logging
