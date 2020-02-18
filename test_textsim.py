@@ -44,6 +44,7 @@ from statistics import mean
 from functools import partial
 from scipy.spatial import distance
 import numpy as np
+import pandas as pd
 
 def load_data(file):
 	"""Load data from input file
@@ -101,7 +102,8 @@ def normalise(scores,inverse=False):
 def run_experiment(same, diff, prep_fun, dist_fun,inverse=False):
 	same_dists=_run_experiment_set(same,prep_fun,dist_fun)
 	diff_dists=_run_experiment_set(diff,prep_fun,dist_fun)
-	return score(same_dists,diff_dists,inverse)
+	#return score(same_dists,diff_dists,inverse)
+	return same_dists, diff_dists
 
 def _run_experiment_set(stmts, prep_fun, dist_fun):
 	dists=[]
@@ -154,6 +156,7 @@ def run_cr5(same,diff,preprocess_fun):
 
 	# path_to_pretrained_model, model_prefix
 	cr5_model = Cr5_Model('../Cr5/models/','joint_28')
+	#cr5_model = Cr5_Model('/home/chico/NLP/Cr5/model_28_txt/','joint_28')
 
 	cr5_model.load_langs(['en']) # list_of_languages being imported
 
@@ -223,6 +226,7 @@ def wordcloud_embed(txt,parser,model):
 
 
 if __name__ == "__main__":
+
 	logging.info("Loading...")
 	#This is English-only and hence something to review in the future
 	# Execute 
@@ -239,18 +243,25 @@ if __name__ == "__main__":
 
 	logging.info("All initial setup complete")
 
+	#import warnings
+	#warnings.filterwarnings("ignore")
+
+	measures = {}
+
 	# Word mean + cosine
 	print("Word vector means and cosine (current approach)...")
 	stopwords_path = './data/stopwords-en.txt'
 	with open(stopwords_path, 'r') as fh:
 		stopwords = fh.read().split(',')
-	x=run_mean_word_cos(SAME,DIFF,stopwords,gn300model)
-	print(x)
+	results=run_mean_word_cos(SAME,DIFF,stopwords,gn300model)
+	measures['cosine'] = results
+	print(score(results[0],results[1]))
 
 	#Point cloud
 	print("Word cloud average method...")
-	x=run_experiment(SAME,DIFF,partial(wordcloud_embed,parser=ENparser,model=gn300model),avg_sim_between_point_clouds)
-	print(x)
+	results=run_experiment(SAME,DIFF,partial(wordcloud_embed,parser=ENparser,model=gn300model),avg_sim_between_point_clouds)
+	measures['MUSE_cloud'] = results
+	print(score(results[0],results[1]))
 
 	#Point cloud kernel
 	print("Word cloud kernel methods (third output is bandwidth)....")
@@ -258,24 +269,44 @@ if __name__ == "__main__":
 	#bw_range    = 1.0/gamma_range[::-1]
 	bw_range=[0.001,0.01,0.1,0.5,1.0]
 	for bw in bw_range:
-		#print("bw={}".format(bw))
-		x=run_experiment(SAME,DIFF,partial(wordcloud_embed,parser=ENparser,model=gn300model),partial(kernel_correlation_sim,bw=bw))
-		print(x+(bw,))
+		results = run_experiment(SAME,DIFF,partial(wordcloud_embed,parser=ENparser,model=gn300model),partial(kernel_correlation_sim,bw=bw))
+		measures['MUSE_bw_'+str(bw)] = results
+		print("bw={}".format(bw))
+		#print(x+(bw,))
+		print(score(results[0],results[1]))
 
 	# Word Mover Distance
 	print("Word mover distance...")
-	x=run_experiment(SAME,DIFF,partial(preprocess, parser=ENparser), partial(wordmover,model=gn300model),inverse=True)
-	print(x)
+	results = run_experiment(SAME,DIFF,partial(preprocess, parser=ENparser), partial(wordmover,model=gn300model),inverse=True)
+	measures['word_mover'] = results
+	print(score(results[0],results[1],inverse=True))
 
 	#CR5
 	print("CR5 document embeddings")
-	x=run_cr5(SAME,DIFF,partial(preprocess,parser=ENparser))
-	print(x)
+	results = run_cr5(SAME,DIFF,partial(preprocess,parser=ENparser))
+	measures['CR5'] = results
+	print(score(results[0],results[1],inverse=True))
 
 	#Set intersection over set union
 	print("Set intersection over set union...")
-	x=run_experiment(SAME,DIFF,partial(preprocess, parser=ENparser), set_dist)
-	print(x)
+	results = run_experiment(SAME,DIFF,partial(preprocess, parser=ENparser), set_dist)
+	measures['set'] = results
+	print(score(results[0],results[1]))
 
 	#TODO: Other embeddings (MUSE, Burt)
 
+	# Save measures
+	columns=['metric','measure','which_comparisons']
+	tuples = []
+	for key in measures.keys():
+	    if key in ['word_mover','CR5']:
+	        idx0, idx1 = 1, 0
+	    else:
+	        idx0, idx1 = 0, 1    
+	    
+	    tuples += [ (key,xi,'SAME') for xi in measures[key][idx0] ]
+	    tuples += [ (key,xi,'DIFF') for xi in measures[key][idx1] ]
+
+	outfile = 'output_measures_textsim.csv'
+	df = pd.DataFrame(tuples, columns=['metric','measure','which_comparisons'])  
+	df.to_csv(outfile,index=False)
