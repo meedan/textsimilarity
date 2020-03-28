@@ -46,6 +46,11 @@ from scipy.spatial import distance
 import numpy as np
 import pandas as pd
 
+#For embeddings
+import io
+import gensim
+
+
 def load_data(file):
 	"""Load data from input file
 	Return two lists of sentence pairs. The first is matching sentences and the second is non-matching sentences
@@ -76,7 +81,7 @@ def preprocess(txt,parser):
 	return [token.lemma_.lower() for token in doc]
 
 
-def score(same_scores,diff_scores,inverse=False):
+def score(same_scores,diff_scores):
 	"""
 	Compute mean differences and max/min difference.
 	Parameters:
@@ -101,6 +106,9 @@ def normalise(s1,s2,inverse=False):
 
 
 def run_experiment(same, diff, prep_fun, dist_fun,inverse=False):
+	"""
+		@param inverse. This should be false if distance function is a similarity function (i.e., higher number indicates documents are more similar). Set inverse=True if dist_func is a distance (i.e., higher number indicates documents are less similar)
+	"""
 	same_dists=_run_experiment_set(same,prep_fun,dist_fun)
 	diff_dists=_run_experiment_set(diff,prep_fun,dist_fun)
 	#return score(same_dists,diff_dists,inverse)
@@ -171,6 +179,31 @@ def cr5_dist(stmt1,stmt2,model):
 
 	return float(distance.cosine(s1_embedding, s2_embedding))
 
+
+#
+# Universal sentence encodings
+#
+import tensorflow as tf
+import tensorflow_hub as hub
+
+def create_unisent_func(module):
+	with tf.Graph().as_default():
+		sentences = tf.placeholder(tf.string)
+		embed = hub.Module(module)
+		embeddings = embed(sentences)
+		session = tf.train.MonitoredSession()
+	#def audit(x):
+	#	print(x)
+	#	return session.run(embeddings, {sentences: [x]})
+	return lambda x: session.run(embeddings, {sentences: [x]})[0]
+
+
+from math import acos, pi
+def angdist(u,v):
+	return 1-acos(1-distance.cosine(u,v))/pi
+
+
+
 #
 # Point cloud methods
 #
@@ -227,9 +260,8 @@ def wordcloud_embed(txt,parser,model):
 			pass
 	return word_vecs
 
-
 if __name__ == "__main__":
-
+	
 	logging.info("Loading...")
 	#This is English-only and hence something to review in the future
 	# Execute 
@@ -241,54 +273,101 @@ if __name__ == "__main__":
 	#We should definitely try MUSE and Bert
 	# To get started, we'll use the standard word2vec model from Google News
 	gn300model = api.load('word2vec-google-news-300')
-
+	gn300model.init_sims(replace=True)
+	
+	muse_model = gensim.models.KeyedVectors.load_word2vec_format("data/muse/wiki.multi.en.vec")
+	muse_model.init_sims(replace=True)
+	
+	outfile = 'output_measures_textsim_norm.csv'
+	
 	SAME,DIFF=load_data("./data/test_STS2017en-en.txt")
 
 	logging.info("All initial setup complete")
 
 	#import warnings
 	#warnings.filterwarnings("ignore")
+	
+	#from fairseq.models.roberta import XLMRModel
+	#xlmr = XLMRModel.from_pretrained('data/xlmr.large', checkpoint_file='data/xlmr.large.model.pt')
+	#xlmr.eval()  # disable dropout (or leave in train mode to finetune)
+		
+	models={"gn300model":gn300model, "MUSE":muse_model} #, "XLM-RoBERTa":xlmr}
 
 	measures = {}
-
-	# Word mean + cosine
-	print("Word vector means and cosine (current approach)...")
-	stopwords_path = './data/stopwords-en.txt'
-	with open(stopwords_path, 'r') as fh:
-		stopwords = fh.read().split(',')
-	results=run_mean_word_cos(SAME,DIFF,stopwords,gn300model)
-	measures['cosine'] = results
-	print(score(results[0],results[1]))
-
-	#Point cloud
-	print("Word cloud average method...")
-	results=run_experiment(SAME,DIFF,partial(wordcloud_embed,parser=ENparser,model=gn300model),avg_sim_between_point_clouds)
-	measures['MUSE_cloud'] = results
-	print(score(results[0],results[1]))
-
-	#Point cloud kernel
-	print("Word cloud kernel methods (third output is bandwidth)....")
-	#gamma_range = np.arange(1,11,1)
-	#bw_range    = 1.0/gamma_range[::-1]
-	bw_range=[0.001,0.01,0.1,0.5,1.0]
-	for bw in bw_range:
-		results = run_experiment(SAME,DIFF,partial(wordcloud_embed,parser=ENparser,model=gn300model),partial(kernel_correlation_sim,bw=bw))
-		measures['MUSE_bw_'+str(bw)] = results
-		print("bw={}".format(bw))
-		#print(x+(bw,))
+	
+	for model in models:
+		print("==={}".format(model))
+		# Word mean + cosine
+		print("Word vector means and cosine (current approach)...")
+		stopwords_path = './data/stopwords-en.txt'
+		with open(stopwords_path, 'r') as fh:
+			stopwords = fh.read().split(',')
+		results=run_mean_word_cos(SAME,DIFF,stopwords,models[model])
+		measures['cosine_{}'.format(model)] = results
 		print(score(results[0],results[1]))
 
-	# Word Mover Distance
-	print("Word mover distance...")
-	results = run_experiment(SAME,DIFF,partial(preprocess, parser=ENparser), partial(wordmover,model=gn300model),inverse=True)
-	measures['word_mover'] = results
-	print(score(results[0],results[1],inverse=True))
+		#Point cloud
+		print("Word cloud average method...")
+		results=run_experiment(SAME,DIFF,partial(wordcloud_embed,parser=ENparser,model=models[model]),avg_sim_between_point_clouds)
+		measures['cloud_{}'.format(model)] = results
+		print(score(results[0],results[1]))
 
+		#Point cloud kernel
+		print("Word cloud kernel methods (third output is bandwidth)....")
+		#gamma_range = np.arange(1,11,1)
+		#bw_range    = 1.0/gamma_range[::-1]
+		bw_range=[0.001,0.01,0.1,0.5,1.0]
+		for bw in bw_range:
+			results = run_experiment(SAME,DIFF,partial(wordcloud_embed,parser=ENparser,model=models[model]),partial(kernel_correlation_sim,bw=bw))
+			measures['bw_{}_{}'.format(bw,model)] = results
+			#print("bw={}".format(bw))
+			#print(x+(bw,))
+			print(score(results[0],results[1]),bw)
+
+		# Word Mover Distance	
+		print("Word mover distance...")
+		results = run_experiment(SAME,DIFF,partial(preprocess, parser=ENparser), partial(wordmover,model=models[model]),inverse=True)
+		measures['word_mover_{}'.format(model)] = results
+		print(score(results[0],results[1]))
+	
 	#CR5
 	print("CR5 document embeddings")
 	results = run_cr5(SAME,DIFF,partial(preprocess,parser=ENparser))
 	measures['CR5'] = results
-	print(score(results[0],results[1],inverse=True))
+	print(score(results[0],results[1]))
+	
+	#Universal Sentence Encodings
+	print("Universal sentence encodings")
+	embed = create_unisent_func("data/universal_sentence_encoder")
+	#results = run_unisent(SAME,DIFF,embed,dist_func=angdist,inverse=False)
+	results = run_experiment(SAME,DIFF,embed,angdist,inverse=False)
+	measures['unisent-angdist'] = results
+	print(score(results[0],results[1]))
+
+
+	#results = run_unisent(SAME,DIFF,embed,dist_func=distance.cosine,inverse=True)
+	results = run_experiment(SAME,DIFF,embed,distance.cosine,inverse=True)
+	measures['unisent-cosine'] = results
+	print(score(results[0],results[1]))
+
+	#Bert
+	print("Web BERT") 
+	#Predicts 1 (unrelated) to 5 (same) 
+	# It is actually trained on data from this same STS task
+	from semantic_text_similarity.models import WebBertSimilarity
+	web_bert = web_model = WebBertSimilarity(device='cpu')
+	results=run_experiment(SAME,DIFF,lambda x:x, #<- no prep
+		lambda x,y: float(web_bert.predict([(x,y)])),inverse=False)
+	measures['web-bert'] = results
+	print(score(results[0],results[1]))
+	
+	print("Clinical BERT")
+	from semantic_text_similarity.models import ClinicalBertSimilarity
+	clincial_bert = ClinicalBertSimilarity(device='cpu')
+	results=run_experiment(SAME,DIFF,lambda x:x, #<- no prep
+		lambda x,y : float(clincial_bert.predict([(x,y)])),inverse=False)
+	measures['clincial-bert'] = results
+	print(score(results[0],results[1]))
 
 	#Set intersection over set union
 	print("Set intersection over set union...")
@@ -296,20 +375,17 @@ if __name__ == "__main__":
 	measures['set'] = results
 	print(score(results[0],results[1]))
 
-	#TODO: Other embeddings (MUSE, Burt)
-
 	# Save measures
-	columns=['metric','measure','which_comparisons']
+	
 	tuples = []
 	for key in measures.keys():
-	    if key in ['word_mover','CR5']:
-	        idx0, idx1 = 1, 0
-	    else:
-	        idx0, idx1 = 0, 1    
+		#if key in ['word_mover','CR5']:
+		#    idx0, idx1 = 1, 0
+		#else:
+		idx0, idx1 = 0, 1    
 	    
-	    tuples += [ (key,xi,'SAME') for xi in measures[key][idx0] ]
-	    tuples += [ (key,xi,'DIFF') for xi in measures[key][idx1] ]
-
-	outfile = 'output_measures_textsim.csv'
+		tuples += [ (key,xi,'SAME') for xi in measures[key][idx0] ]
+		tuples += [ (key,xi,'DIFF') for xi in measures[key][idx1] ]
+	
 	df = pd.DataFrame(tuples, columns=['metric','measure','which_comparisons'])  
 	df.to_csv(outfile,index=False)
