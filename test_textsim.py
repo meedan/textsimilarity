@@ -80,30 +80,33 @@ def score(same_scores,diff_scores,inverse=False):
 	"""
 	Compute mean differences and max/min difference.
 	Parameters:
-		@same_scores - a list of scores, not normalised, for matching sentences
-		@diff_scores - a list of scores, not normalised, for non-matching sentences
+		@same_scores - a list of scores, normalised, for matching sentences
+		@diff_scores - a list of scores, normalised, for non-matching sentences
 		@return intermean_dist,intergroup_dist - See comments at top of file
 	"""
-	norms=normalise(same_scores+diff_scores,inverse)
-	s1=norms[0:len(same_scores)]
-	s2=norms[len(same_scores):]
-	intermean_dist=mean(s1)-mean(s2)
-	intergroup_dist=min(s1)-max(s2)
+	intermean_dist=mean(same_scores)-mean(diff_scores)
+	intergroup_dist=min(same_scores)-max(diff_scores)
 	return intermean_dist,intergroup_dist
 
-def normalise(scores,inverse=False):
+def normalise(s1,s2,inverse=False):
+	scores=s1+s2
+	
 	mn=min(scores)
 	mx=max(scores)
 	if inverse:
-		return [1-((x-mn)/(mx-mn)) for x in scores]
+		norms = [1-((x-mn)/(mx-mn)) for x in scores]
 	else:
-		return [(x-mn)/(mx-mn) for x in scores]
+		norms = [(x-mn)/(mx-mn) for x in scores]
+	return norms[0:len(s1)], norms[len(s1):]
+
 
 def run_experiment(same, diff, prep_fun, dist_fun,inverse=False):
 	same_dists=_run_experiment_set(same,prep_fun,dist_fun)
 	diff_dists=_run_experiment_set(diff,prep_fun,dist_fun)
 	#return score(same_dists,diff_dists,inverse)
-	return same_dists, diff_dists
+	s1,s2=normalise(same_dists,diff_dists,inverse)
+	#return same_dists, diff_dists
+	return s1,s2
 
 def _run_experiment_set(stmts, prep_fun, dist_fun):
 	dists=[]
