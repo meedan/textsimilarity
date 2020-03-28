@@ -30,4 +30,8 @@ if __name__ == "__main__":
 	
 	print(angdist(embedding1,embedding3)) #0.5289
 	
+	sentence4 = "¡Ganamos! Vamos a vencer sobre el virus"
+	embedding4 = unisent_multilingual([sentence4]).numpy()
+	
+	print(angdist(embedding4,embedding3)) #0.7096
 
