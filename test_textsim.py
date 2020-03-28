@@ -38,18 +38,13 @@ The functions we will compare are:
 
 import logging
 
-import spacy
-import gensim.downloader as api
 from statistics import mean
 from functools import partial
 from scipy.spatial import distance
 import numpy as np
-import pandas as pd
 
 #For embeddings
 import io
-import gensim
-
 
 def load_data(file):
 	"""Load data from input file
@@ -261,7 +256,11 @@ def wordcloud_embed(txt,parser,model):
 	return word_vecs
 
 if __name__ == "__main__":
-	
+	import spacy
+	import gensim.downloader as api
+	import gensim
+	import pandas as pd
+		
 	logging.info("Loading...")
 	#This is English-only and hence something to review in the future
 	# Execute 
