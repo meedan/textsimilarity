@@ -30,3 +30,5 @@ python universal_sentence_encoder.py [URL to model file or path to local model f
 ```
 
 By default, uses data model `universal-sentence-encoder-large` at https://tfhub.dev/google/universal-sentence-encoder-multilingual-large/3. You can also use `universal-sentence-encoder-multilingual-large` at https://tfhub.dev/google/universal-sentence-encoder-multilingual-large/3 or download those locally and point to their extracted directories.
+
+When TensorFlow Hub downloads a model file, it caches it locally at `/tmp/tfhub_modules/` or wherever env var `TFHUB_CACHE_DIR` points. You can control caching this way.
