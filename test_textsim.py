@@ -150,6 +150,14 @@ def set_dist(stmt1,stmt2):
 	return len(s1.intersection(s2))/len(s1.union(s2))
 
 
+#Mock the https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-match-query.html#query-dsl-match-query-boolean method
+#As used in https://github.com/meedan/alegre/blob/7840ca6d425a0b4b08e38def4bab4e8fed3bac87/app/main/controller/similarity_controller.py#L62
+def es_match_dist(stmt1,stmt2):
+	s1=set(stmt1)
+	s2=set(stmt2)
+	return len(s1.intersection(s2))/len(s1) 
+
+
 #
 # Cr5
 #
@@ -373,6 +381,13 @@ if __name__ == "__main__":
 	results = run_experiment(SAME,DIFF,partial(preprocess, parser=ENparser), set_dist)
 	measures['set'] = results
 	print(score(results[0],results[1]))
+	
+	#!!!Didn't execute this code block
+	print("es-match - Set intersection over length of sentence 1...")
+	results = run_experiment(SAME,DIFF,lambda x:x,es_match_dist,inverse=False)
+	measures['es-match'] = results
+	print(score(results[0],results[1]))
+	#!!!End unexecuted code block
 
 	# Save measures
 	

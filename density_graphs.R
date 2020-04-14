@@ -1,8 +1,10 @@
 library(ggplot2)
+library(plyr)
 
-df<-read.csv('output_measures_textsim_norm.csv')
-df2<-read.csv("output_multilingual_unisent.csv",sep="\t")
-dfData<-rbind(df,df2)
+df<-read.csv('output_measures_textsim_norm.csv',stringsAsFactors = FALSE)
+df2<-read.csv("output_multilingual_unisent.csv",sep="\t",stringsAsFactors = FALSE)
+df3<-read.csv("output_es_match.csv",sep="\t",stringsAsFactors = FALSE)
+dfData<-rbind(df,df2,df3)
 head(dfData)
 
 p<-ggplot(dfData,aes(x=metric,y=measure,fill=which_comparisons))+geom_boxplot()+coord_flip()
@@ -28,3 +30,37 @@ p<-p+facet_wrap(~metric)+theme_bw()+theme(legend.position="bottom",legend.title=
 p
 
 ggsave("density_plots_subset.png",p,width=12,height=8)
+
+
+##############
+# Compare some thresholds
+
+thresholds<-c(1,.99,.97,.95,.9,.85,.8)
+metrics<-c("cosine_gn300model","multi-unisent-angdist","es-match")#,"CR5")
+
+tsub<-subset(dfData,metric%in%metrics)
+
+
+for (t in thresholds) {
+  #dfData[,paste0("t",t)]<-dfData$measure>t
+  print("------------------------")
+  print(paste0("Threshold: ",t))
+  
+  vals<-tsub$measure>=t
+  sub<-tsub[vals,]
+  x<-ddply(sub,.(metric),function(df) {
+    return(data.frame(
+      len=nrow(df),
+      true_pos=sum(df$which_comparisons=="SAME")/nrow(df),
+      false_pos=sum(df$which_comparisons=="DIFF")/nrow(df)
+    ))
+  })
+  print(x)
+}
+
+print("Total 'good' matches")
+sum(tsub$which_comparisons=="SAME" & tsub$metric=="cosine_gn300model")
+print("Total 'bad' matches")
+sum(tsub$which_comparisons=="DIFF" & tsub$metric=="cosine_gn300model")
+print("Total sentence pairs in data")
+sum(tsub$metric=="cosine_gn300model")
