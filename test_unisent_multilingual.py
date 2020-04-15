@@ -35,6 +35,10 @@ if __name__ == "__main__":
 	results = run_experiment(SAME,DIFF,lambda x : unisent_multilingual([x]).numpy(),distance.cosine,inverse=True)
 	measures['multi-unisent-cosine'] = results
 	print(score(results[0],results[1]))
+	
+	results = run_experiment(SAME,DIFF,lambda x : unisent_multilingual([x]).numpy(),sqrtdist,inverse=True)
+	measures['multi-unisent-sqrt'] = results
+	print(score(results[0],results[1]))
 		
 	with open("output_multilingual_unisent.csv", "w") as fh:	
 		fh.write("\t".join(['metric','measure','which_comparisons']))

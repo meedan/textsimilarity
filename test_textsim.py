@@ -45,6 +45,7 @@ import numpy as np
 
 #For embeddings
 import io
+import math
 
 def load_data(file):
 	"""Load data from input file
@@ -141,6 +142,29 @@ def run_mean_word_cos(same,diff,stopwords,model):
 	#Note: for ds.cosine_sim, 1=most similar (0=dissimular)
 	#lambda function is to force the return of a float rather than a numpy32 type variable (without changing the algrege_docsim.py file)
 
+
+def run_mean_word_angdist(same,diff,stopwords,model):
+	#stmt1=[model.wv[w] for w in stmt1 if w in model]
+	#stmt2=[model.wv[w] for w in stmt2 if w in model]
+	#cos(mean(stmt1),mean(stmt2))
+	from alegre_docsim import DocSim
+	ds = DocSim(model,stopwords)
+	return run_experiment(same,diff,ds.vectorize,lambda x,y : float(angdist(x,y)))
+	#Note: for ds.cosine_sim, 1=most similar (0=dissimular)
+	#lambda function is to force the return of a float rather than a numpy32 type variable (without changing the algrege_docsim.py file)
+
+
+def run_mean_word_sqrtdist(same,diff,stopwords,model):
+	#stmt1=[model.wv[w] for w in stmt1 if w in model]
+	#stmt2=[model.wv[w] for w in stmt2 if w in model]
+	#cos(mean(stmt1),mean(stmt2))
+	from alegre_docsim import DocSim
+	ds = DocSim(model,stopwords)
+	return run_experiment(same,diff,ds.vectorize,lambda x,y : float(sqrtdist(x,y)),inverse=True)
+	#Note: for ds.cosine_sim, 1=most similar (0=dissimular)
+	#lambda function is to force the return of a float rather than a numpy32 type variable (without changing the algrege_docsim.py file)
+
+
 #
 # Set approach
 #
@@ -201,9 +225,13 @@ def create_unisent_func(module):
 	return lambda x: session.run(embeddings, {sentences: [x]})[0]
 
 
-from math import acos, pi
 def angdist(u,v):
-	return 1-acos(1-distance.cosine(u,v))/pi
+	d=max(-1,min(1,distance.cosine(u,v))) #Ensure d is strictly between -1 and 1
+	return 1-math.acos(1-d)/math.pi
+
+def sqrtdist(u,v):
+	d=max(-1,min(1,distance.cosine(u,v))) #Ensure d is strictly between -1 and 1
+	return 1-math.sqrt((1-d)/2)
 
 
 
@@ -310,13 +338,30 @@ if __name__ == "__main__":
 		with open(stopwords_path, 'r') as fh:
 			stopwords = fh.read().split(',')
 		results=run_mean_word_cos(SAME,DIFF,stopwords,models[model])
-		measures['cosine_{}'.format(model)] = results
+		measures['{}-cos'.format(model)] = results
+		print(score(results[0],results[1]))
+
+		# Word mean + angdist
+		print("Word vector means and angular similarity...")
+		stopwords_path = './data/stopwords-en.txt'
+		with open(stopwords_path, 'r') as fh:
+			stopwords = fh.read().split(',')
+		results=run_mean_word_angdist(SAME,DIFF,stopwords,models[model])
+		measures['{}-ang'.format(model)] = results
+		print(score(results[0],results[1]))		
+		
+		print("Word vector means and sqrt dist...")
+		stopwords_path = './data/stopwords-en.txt'
+		with open(stopwords_path, 'r') as fh:
+			stopwords = fh.read().split(',')
+		results=run_mean_word_sqrtdist(SAME,DIFF,stopwords,models[model])
+		measures['{}-sqrt'.format(model)] = results
 		print(score(results[0],results[1]))
 
 		#Point cloud
 		print("Word cloud average method...")
 		results=run_experiment(SAME,DIFF,partial(wordcloud_embed,parser=ENparser,model=models[model]),avg_sim_between_point_clouds)
-		measures['cloud_{}'.format(model)] = results
+		measures['{}-cloud'.format(model)] = results
 		print(score(results[0],results[1]))
 
 		#Point cloud kernel
@@ -326,7 +371,7 @@ if __name__ == "__main__":
 		bw_range=[0.001,0.01,0.1,0.5,1.0]
 		for bw in bw_range:
 			results = run_experiment(SAME,DIFF,partial(wordcloud_embed,parser=ENparser,model=models[model]),partial(kernel_correlation_sim,bw=bw))
-			measures['bw_{}_{}'.format(bw,model)] = results
+			measures['{}-bw-{}'.format(model,bw)] = results
 			#print("bw={}".format(bw))
 			#print(x+(bw,))
 			print(score(results[0],results[1]),bw)
@@ -334,13 +379,13 @@ if __name__ == "__main__":
 		# Word Mover Distance	
 		print("Word mover distance...")
 		results = run_experiment(SAME,DIFF,partial(preprocess, parser=ENparser), partial(wordmover,model=models[model]),inverse=True)
-		measures['word_mover_{}'.format(model)] = results
+		measures['{}-word-mover'.format(model)] = results
 		print(score(results[0],results[1]))
 	
 	#CR5
 	print("CR5 document embeddings")
 	results = run_cr5(SAME,DIFF,partial(preprocess,parser=ENparser))
-	measures['CR5'] = results
+	measures['cr5'] = results
 	print(score(results[0],results[1]))
 	
 	#Universal Sentence Encodings
@@ -351,6 +396,12 @@ if __name__ == "__main__":
 	measures['unisent-angdist'] = results
 	print(score(results[0],results[1]))
 
+
+	embed = create_unisent_func("data/universal_sentence_encoder")
+	#results = run_unisent(SAME,DIFF,embed,dist_func=angdist,inverse=False)
+	results = run_experiment(SAME,DIFF,embed,sqrtdist,inverse=True)
+	measures['unisent-sqrtdist'] = results
+	print(score(results[0],results[1]))
 
 	#results = run_unisent(SAME,DIFF,embed,dist_func=distance.cosine,inverse=True)
 	results = run_experiment(SAME,DIFF,embed,distance.cosine,inverse=True)
@@ -382,12 +433,10 @@ if __name__ == "__main__":
 	measures['set'] = results
 	print(score(results[0],results[1]))
 	
-	#!!!Didn't execute this code block
 	print("es-match - Set intersection over length of sentence 1...")
 	results = run_experiment(SAME,DIFF,lambda x:x,es_match_dist,inverse=False)
 	measures['es-match'] = results
 	print(score(results[0],results[1]))
-	#!!!End unexecuted code block
 
 	# Save measures
 	

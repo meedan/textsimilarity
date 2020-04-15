@@ -3,8 +3,8 @@ library(plyr)
 
 df<-read.csv('output_measures_textsim_norm.csv',stringsAsFactors = FALSE)
 df2<-read.csv("output_multilingual_unisent.csv",sep="\t",stringsAsFactors = FALSE)
-df3<-read.csv("output_es_match.csv",sep="\t",stringsAsFactors = FALSE)
-dfData<-rbind(df,df2,df3)
+#df3<-read.csv("output_es_match.csv",sep="\t",stringsAsFactors = FALSE)
+dfData<-rbind(df,df2)
 head(dfData)
 
 p<-ggplot(dfData,aes(x=metric,y=measure,fill=which_comparisons))+geom_boxplot()+coord_flip()
@@ -21,9 +21,9 @@ ggsave("density_plots.png",p,width=12,height=8)
 
 unique(dfData$metric)
 
-dfDataSub<-subset(dfData,metric%in%c("set","cosine_gn300model","word_mover_gn300model","multi-unisent-angdist","multi-unisent-cosine","web-bert"))
+dfDataSub<-subset(dfData,metric%in%c("set","gn300model-cos","gn300model-word-mover","multi-unisent-angdist","multi-unisent-cosine","web-bert"))
 
-dfDataSub$metric<-factor(dfDataSub$metric,levels=c("set","cosine_gn300model","word_mover_gn300model","multi-unisent-cosine","multi-unisent-angdist","web-bert"))
+dfDataSub$metric<-factor(dfDataSub$metric,levels=c("set","gn300model-cos","gn300model-word-mover","multi-unisent-cosine","multi-unisent-angdist","web-bert"))
 
 p<-ggplot(dfDataSub,aes(x=measure,fill=which_comparisons))+geom_density(alpha=0.5)
 p<-p+facet_wrap(~metric)+theme_bw()+theme(legend.position="bottom",legend.title=element_blank())
@@ -36,7 +36,7 @@ ggsave("density_plots_subset.png",p,width=12,height=8)
 # Compare some thresholds
 
 thresholds<-c(1,.99,.97,.95,.9,.85,.8)
-metrics<-c("cosine_gn300model","multi-unisent-angdist","es-match")#,"CR5")
+metrics<-c("gn300model-cos","gn300model-ang","gn300model-sqrt","multi-unisent-angdist","multi-unisent-cosine","es-match", "set")#,"CR5")
 
 tsub<-subset(dfData,metric%in%metrics)
 
@@ -59,8 +59,8 @@ for (t in thresholds) {
 }
 
 print("Total 'good' matches")
-sum(tsub$which_comparisons=="SAME" & tsub$metric=="cosine_gn300model")
+sum(tsub$which_comparisons=="SAME" & tsub$metric=="gn300model-cos")
 print("Total 'bad' matches")
-sum(tsub$which_comparisons=="DIFF" & tsub$metric=="cosine_gn300model")
+sum(tsub$which_comparisons=="DIFF" & tsub$metric=="gn300model-cos")
 print("Total sentence pairs in data")
-sum(tsub$metric=="cosine_gn300model")
+sum(tsub$metric=="gn300model-cos")
