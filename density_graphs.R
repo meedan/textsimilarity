@@ -3,8 +3,8 @@ library(plyr)
 
 df<-read.csv('output_measures_textsim_norm.csv',stringsAsFactors = FALSE)
 df2<-read.csv("output_multilingual_unisent.csv",sep="\t",stringsAsFactors = FALSE)
-#df3<-read.csv("output_es_match.csv",sep="\t",stringsAsFactors = FALSE)
-dfData<-rbind(df,df2)
+df3<-read.csv("output_flair.csv",sep="\t",stringsAsFactors = FALSE)
+dfData<-rbind(df,df2,df3)
 head(dfData)
 
 p<-ggplot(dfData,aes(x=metric,y=measure,fill=which_comparisons))+geom_boxplot()+coord_flip()
@@ -36,7 +36,7 @@ ggsave("density_plots_subset.png",p,width=12,height=8)
 # Compare some thresholds
 
 thresholds<-c(1,.99,.97,.95,.9,.85,.8)
-metrics<-c("gn300model-cos","gn300model-ang","gn300model-sqrt","multi-unisent-angdist","multi-unisent-cosine","es-match", "set")#,"CR5")
+metrics<-c("gn300model-cos","gn300model-ang","gn300model-sqrt","multi-unisent-angdist","multi-unisent-cosine","es-match", "set", "xlmr-wmdist")#,"CR5")
 
 tsub<-subset(dfData,metric%in%metrics)
 
