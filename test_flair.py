@@ -24,7 +24,9 @@ for token in sentence:
 #print(type(y))
 #print(len(y))
 
-
+from flair.data import Sentence
+from wmdistance import wmdistance
+import numpy as np
     
 #quit(0)
 
@@ -46,15 +48,14 @@ def flair_embed_dict(txt,model):
 
 	# embed words in sentence
 	x=model.embed(sentence)
-	return {str(token):token.embedding.numpy() for token in sentence}
+	return {token.text:token.embedding.numpy() for token in sentence}
 
 
 if __name__ == "__main__":
 
 	from test_textsim import *
 	from flair.embeddings import XLMRobertaEmbeddings, BertEmbeddings, XLNetEmbeddings, XLMEmbeddings, RoBERTaEmbeddings
-	from flair.data import Sentence
-	from wmdistance import wmdistance
+
 	
 	measures={}
 	
