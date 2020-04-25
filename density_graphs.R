@@ -64,3 +64,20 @@ print("Total 'bad' matches")
 sum(tsub$which_comparisons=="DIFF" & tsub$metric=="gn300model-cos")
 print("Total sentence pairs in data")
 sum(tsub$metric=="gn300model-cos")
+
+########################
+library(ggplot2)
+library(plyr)
+
+dfHindi<-read.csv('output_hindi.csv',sep="\t",stringsAsFactors = FALSE)
+
+p<-ggplot(dfHindi,aes(x=metric,y=measure,fill=which_comparisons))+geom_boxplot()+coord_flip()
+p<-p+theme_bw()+theme(legend.position="bottom",legend.title=element_blank())
+ggsave("hindi_boxplots.png",p,width=10,height=8)
+
+
+p<-ggplot(dfHindi,aes(x=measure,fill=which_comparisons))+geom_density(alpha=0.5)
+p<-p+facet_wrap(~metric,scales="free")+theme_bw()+theme(legend.position="bottom",legend.title=element_blank())
+p
+
+ggsave("hindi_density_plots.png",p,width=12,height=8)
