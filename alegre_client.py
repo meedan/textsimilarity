@@ -25,12 +25,15 @@ class AlegreClient:
         request_params["context"] = context
       self.store_text_similarity(request_params)
 
-  def transform_ciper_data(self, ciper_filename="data/ciper_news_dataset.json"):
+  def transform_ciper_data(self, with_truncation=True, ciper_filename="data/ciper_news_dataset.json"):
     #data/alegre_client_evaluation_data.zip must be unzipped in data dir for this to work!
     dataset = json.loads(open(ciper_filename).read())
     rows = []
     for row in dataset:
-        rows.append({"lookup_text": row.get("title"), "database_text": " ".join(row.get("content").split(" ")[:100])})
+        content = row.get("content")
+        if with_truncation:
+            content = " ".join(row.get("content").split(" ")[:100])
+        rows.append({"lookup_text": row.get("title"), "database_text": content})
     return rows
 
   def transform_stanford_qa_data(self, qa_filename="data/dev-v2.0.json"):
@@ -155,6 +158,12 @@ class AlegreClient:
 
   def run_ciper_missing_test(self, model_name):
     return self.evaluate_model(self.transform_ciper_data(), model_name, [], True, True)
+
+  def run_ciper_test_no_truncation(self, model_name):
+    return self.evaluate_model(self.transform_ciper_data(False), model_name, [], True, True)
+
+  def run_ciper_missing_test_no_truncation(self, model_name):
+    return self.evaluate_model(self.transform_ciper_data(False), model_name, [], True, True)
 
   def interpret_report(self, report):
     positions = Counter()
