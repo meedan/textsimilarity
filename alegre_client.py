@@ -120,12 +120,12 @@ class AlegreClient:
       results["count"] += 1
       result = json.loads(self.get_similar_texts({
         "model": model_name,
-        "text": fact_pair["lookup_text"].lower(),
+        "text": fact_pair["lookup_text"], #I don't think we should call .lower() here?
         "context": context,
         "threshold": 0.0,
       }).text)
       #due to indexing math this may be an off-by-one but it's close enough for our test today, and it's too late at night to make sure, but not too late so as not to remind myself about this later....
-      is_omitted = ii > split_point
+      is_omitted = omit_half and ii >= split_point
       results["resultset"].append({"fact_pair": fact_pair, "response": result, "is_omitted": is_omitted})
     return results
 
