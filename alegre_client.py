@@ -18,13 +18,27 @@ class AlegreClient:
       hostname = AlegreClient.default_hostname()
     self.hostname = hostname
 
-  def input_cases(self, texts, model_name, context={}):
+  def input_cases(self, texts, model_name, context={}, language=None):
     for text in texts:
       request_params = {"model": model_name, "text": text}
       if context:
         request_params["context"] = context
+      if language:
+        request_params["language"] = language
       self.store_text_similarity(request_params)
 
+  def transform_india_today_data(self, filename="data/indiatoday_texts.csv"):
+    with open(filename) as f:
+      reader = csv.reader(f)
+      dataset = []
+      for row in reader:
+        content = " ".join(row[1].split(" ")[:100])
+        dataset.append({"database_text": content, "lookup_text": content, "id": row[0]})
+    return dataset
+      
+  def transform_hindi_headlines_data(self, filename="data/hindi_headlines.json"):
+    return json.loads(open(filename).read())
+      
   def transform_ciper_data(self, with_truncation=True, ciper_filename="data/ciper_news_dataset.json"):
     #data/alegre_client_evaluation_data.zip must be unzipped in data dir for this to work!
     dataset = json.loads(open(ciper_filename).read())
@@ -88,21 +102,22 @@ class AlegreClient:
         request_params["context"] = context
       self.store_text_similarity(request_params)
 
-  def get_for_text(text, model_name, context={}):
+  def get_for_text(self, text, model_name, context={}, language=None):
     if not context:
       context = {"task": "model_evaluation", "model_name": model_name}
-    return json.loads(ac.get_similar_texts({
+    return json.loads(self.get_similar_texts({
       "model": model_name,
       "text": text.lower(),
       "context": context,
       "threshold": 0.0,
+      "language": language
     }).text)
 
-  def evaluate_model(self, dataset, model_name, confounders, store_dataset, omit_half):
+  def evaluate_model(self, dataset, model_name, confounders, store_dataset, omit_half, task_name="model_evaluation", language=None):
     # Similarity score should be from 0 to 5 similar to data found at https://ixa2.si.ehu.es/stswiki/index.php/STSbenchmark,
     # text_1 will be uploaded to service, text_2 will be used to attempt to retrieve text_1 from the service in a GET request.
     split_point = int(len(dataset)/2)
-    context = {"task": "model_evaluation", "model_name": model_name}
+    context = {"task": task_name, "model_name": model_name}
     if store_dataset:
       if confounders:
         self.input_confounders(confounders, model_name, context)
@@ -113,7 +128,8 @@ class AlegreClient:
       self.input_cases(
         [f["database_text"].lower() for f in sent_group],
         model_name,
-        context
+        context,
+        language
       )
     results = {"count": 0, "success": 0, "server_errors": 0, "resultset": []}
     for ii, fact_pair in enumerate(dataset):
@@ -123,12 +139,35 @@ class AlegreClient:
         "text": fact_pair["lookup_text"].lower(),
         "context": context,
         "threshold": 0.0,
+        "language": language
       }).text)
       #due to indexing math this may be an off-by-one but it's close enough for our test today, and it's too late at night to make sure, but not too late so as not to remind myself about this later....
       is_omitted = ii > split_point
       results["resultset"].append({"fact_pair": fact_pair, "response": result, "is_omitted": is_omitted})
     return results
 
+  def evaluate_model_iteratively(self, dataset, model_name, task_name="iterative_model_evaluation", language=None):
+    context = {"task": task_name, "model_name": model_name}
+    results = {"count": 0, "success": 0, "server_errors": 0, "resultset": []}
+    for row in dataset:
+      results["count"] += 1
+      result = json.loads(self.get_similar_texts({
+        "model": model_name,
+        "text": row["lookup_text"],
+        "context": context,
+        "threshold": 0.0,
+        "language": language
+      }).text)
+      result["count_at_time"] = results["count"]
+      self.input_cases(
+        [row["database_text"]],
+        model_name,
+        context,
+        language
+      )
+      results["resultset"].append({"fact_pair": row, "response": result, "is_omitted": False})
+    return results
+      
   def store_text_similarity(self, request_params):
     return requests.post(self.hostname+self.text_similarity_path(), json=request_params)
 
@@ -165,10 +204,36 @@ class AlegreClient:
   def run_ciper_missing_test_no_truncation(self, model_name):
     return self.evaluate_model(self.transform_ciper_data(False), model_name, [], True, True)
 
+  def run_india_today_iterative_test(self, model_name):
+    return self.evaluate_model_iteratively(self.transform_india_today_data(), model_name)
+
+  def run_india_today_hindi_iterative_test(self, model_name):
+    return self.evaluate_model_iteratively(self.transform_india_today_data("data/indiatoday_texts_hindi.csv"), model_name)
+
+  def run_hindi_headlines_test(self, model_name):
+    return self.evaluate_model(self.transform_hindi_headlines_data(), model_name, [], True, False)
+
+  def run_hindi_headlines_test_wm(self, model_name):
+    return self.evaluate_model(self.transform_hindi_headlines_data(), model_name, [], True, True)
+
+  def run_multi_test(self, model_name, use_language_analyzer=True):
+    if use_language_analyzer:
+      return {
+        "hindi_headlines": self.evaluate_model(random.sample(self.transform_hindi_headlines_data(), 400), model_name, [], True, True, "hindi_headlines", "hi"),
+        "ciper": self.evaluate_model(random.sample(self.transform_ciper_data(), 400), model_name, [], True, True, "ciper", "es"),
+        "fact_pairs": self.evaluate_model(random.sample(self.fact_pairs_from_csv(), 400), model_name, [], True, True, "fact_pairs", "en"),
+      }
+    else:
+      return {
+        "hindi_headlines": self.evaluate_model(random.sample(self.transform_hindi_headlines_data(), 400), model_name, [], True, True, "hindi_headlines", ""),
+        "ciper": self.evaluate_model(random.sample(self.transform_ciper_data(), 400), model_name, [], True, True, "ciper", ""),
+        "fact_pairs": self.evaluate_model(random.sample(self.fact_pairs_from_csv(), 400), model_name, [], True, True, "fact_pairs", ""),
+      }
+
   def interpret_report(self, report):
     positions = Counter()
     results_dataset = []
-    results_dataset.append(["Database-Stored Sentence", "Lookup Sentence", "Top Yielded Sentence", "ES Similarity Score", "Result Status"])
+    results_dataset.append(["Database-Stored Sentence", "Lookup Sentence", "Top Yielded Sentence", "ES Similarity Score", "Result Status", "PM ID"])
     for res in report["resultset"]:
       if not res.get('response', {}).get("message"):
         competing_sentences = [ee.get("_source", {}).get("content").lower() for ee in res.get("response", {}).get("result")]
@@ -201,20 +266,66 @@ class AlegreClient:
           row.append(competing_sentences[0])
           row.append(res.get("response", {}).get("result")[0].get("_score"))
           row.append("False Positive")
+        row.append(res.get("fact_pair", {}).get("id"))
         results_dataset.append(row)
       else: 
         positions.update(["server error"])
     return results_dataset, positions
 
+  def evaluate_cut_points(self, multi_report):
+    results = {}
+    for report_key in multi_report:
+      results[report_key] = self.interpret_report(multi_report[report_key])
+    unique_ints = sorted(list(set([e for e in [[int(ee[3]) for ee in e[0] if type(ee[3]) == float] for e in results.values()] for e in e])))
+    accuracy_report = {}
+    for i in list(range(unique_ints[0], unique_ints[-1]+1)):
+      for report_key in results:
+        if not accuracy_report.get(report_key):
+          accuracy_report[report_key] = {}
+        all_results = [e for e in results[report_key][0] if type(e[3]) == float]
+        tp = 0
+        tn = 0
+        fp = 0
+        fn = 0
+        total = 0
+        for row in all_results:
+          if type(row[3]) == float:
+            total += 1
+            if row[3] > i and "Success" in row[4]:
+              tp += 1
+            elif row[3] > i and "Success" not in row[4]:
+              fp += 1
+            elif row[3] <= i and "False Positive" in row[4]:
+              tn += 1
+            elif row[3] <= i and "False Positive" not in row[4]:
+              fn += 1
+        prec = 0
+        if float(tp+fp):
+          prec = tp/float(tp+fp)
+        recall = 0
+        if float(tp+fn):
+          recall = tp/float(tp+fn)
+        acc = 0
+        if total:
+          acc = (tp+tn)/float(total)
+        accuracy_report[report_key][i] = {"prec": prec, "recall": recall, "acc": acc, "tp": tp/float(total), "tn": tn/float(total), "fp": fp/float(total), "fn": fn/float(total)}
+    return accuracy_report
+
+  def accuracy_report_to_table(self, accuracy_report):
+    rows = [["Dataset", "Thresh", "Acc", "Prec", "Recall", "TP", "TN", "FP", "FN"]]
+    for key in accuracy_report:
+      for thresh in accuracy_report[key]:
+        row = accuracy_report[key][thresh]
+        rows.append([key, thresh, row["acc"], row["prec"], row["recall"], row["tp"], row["tn"], row["fp"], row["fn"]])
+    with open('accuracies.csv', 'w', newline='') as f:
+      writer = csv.writer(f)
+      writer.writerows(rows)
+    return rows
+      
 
 if __name__ == '__main__':
-  #from alegre_client import AlegreClient
+  import csv
+  from alegre_client import AlegreClient
   ac = AlegreClient()
-  report = ac.run_ciper_test("universal-sentence-encoder-multilingual-large")
-  results_dataset, positions = ac.interpret_report(report)
-  print(positions)
-  with open('alegre_fact_recall_report.csv', 'w', newline='') as f:
-    writer = csv.writer(f)
-    writer.writerows(results_dataset)
-  # with open("report.json", "w") as f:
-  #   f.write(json.dumps(report))
+  report = ac.run_multi_test("elasticsearch", False)
+  cuts = ac.accuracy_report_to_table(ac.evaluate_cut_points(report))

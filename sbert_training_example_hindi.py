@@ -34,7 +34,27 @@ opus_read --directory JW300 \
     --write_mode moses
 (https://pypi.org/project/opustools-pkg/ to use opus_read)
 """
+def generate_evaluation_file():
+  headlines = json.loads(open("data/hindi_headlines.json").read())
+  datasets = []
+  for dataset in [headlines[:-60], headlines[-60:]]:
+    tmp_dataset = []
+    for row in dataset:
+      random_row = random.sample(headlines, 1)[0]
+      while random_row["database_text"] == row["database_text"]:
+        random_row = random.sample(headlines, 1)[0]
+      tmp_dataset.append([row["lookup_text"], row["database_text"], 4])
+      tmp_dataset.append([row["lookup_text"], random_row["database_text"], 0])
+    datasets.append(tmp_dataset)
+  train, test = datasets
+  with open('data/hindi_sbert_sts_train.csv', 'w', newline='') as f:
+      writer = csv.writer(f, delimiter="\t")
+      writer.writerows(train)
+  with open('data/hindi_sbert_sts_test.csv', 'w', newline='') as f:
+      writer = csv.writer(f, delimiter="\t")
+      writer.writerows(test)
 
+generate_evaluation_file()
 if len(train_files) == 0:
     print("Please specify at least 1 training file: python training_multilingual.py path/to/trainfile.txt")
 
@@ -72,6 +92,29 @@ for train_file in train_files:
 
 train_dataloader = DataLoader(train_data, shuffle=True, batch_size=train_batch_size)
 train_loss = losses.MSELoss(model=model)
+
+The below all apply to the de example - how does one evaluate the model outside this single example???
+###### Load dev sets ######
+
+# Test on STS 2017.en-de dataset using Spearman rank correlation
+logging.info("Read data/hindi_sbert_sts_train.csv dataset")
+evaluators = []
+sts_reader = readers.STSDataReader('./data/', s1_col_idx=0, s2_col_idx=1, score_col_idx=2)
+dev_data = SentencesDataset(examples=sts_reader.get_examples('hindi_sbert_sts_train.csv'), model=model)
+dev_dataloader = DataLoader(dev_data, shuffle=False, batch_size=train_batch_size)
+evaluator_sts = evaluation.EmbeddingSimilarityEvaluator(dev_dataloader, name='Hindi_Headlines_en_hi_sbert')
+evaluators.append(evaluator_sts)
+
+model.fit(train_objectives=[(train_dataloader, train_loss)],
+          evaluator=evaluation.SequentialEvaluator(evaluators, main_score_function=lambda scores: scores[-1]),
+          epochs=20,
+          evaluation_steps=1000,
+          warmup_steps=10000,
+          scheduler='warmupconstant',
+          output_path=output_path,
+          save_best_model=True,
+          optimizer_params= {'lr': 2e-5, 'eps': 1e-6, 'correct_bias': False}
+          )
 
 headlines = json.loads(open("data/hindi_headlines.json").read())
 results = [["Lookup Text", "Database Text", "Cosine Similarity", "Is Supposed to be Match"]]
