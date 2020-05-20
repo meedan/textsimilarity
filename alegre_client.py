@@ -3,6 +3,16 @@ import requests
 import csv
 import random
 from collections import Counter
+import numpy as np
+import requests
+from sklearn.metrics import roc_curve
+def cosine_sim(vecA, vecB):
+  """Find the cosine similarity distance between two vectors."""
+  csim = np.dot(vecA, vecB) / (np.linalg.norm(vecA) * np.linalg.norm(vecB))
+  if np.isnan(np.sum(csim)):
+    return 0
+  return csim
+
 class AlegreClient:
 
   @staticmethod
@@ -216,7 +226,58 @@ class AlegreClient:
   def run_hindi_headlines_test_wm(self, model_name):
     return self.evaluate_model(self.transform_hindi_headlines_data(), model_name, [], True, True)
 
-  def run_multi_test(self, model_name, use_language_analyzer=True):
+  def laser_vector(self, text, language):
+    return requests.get(
+      url="http://127.0.0.1:2212/vectorize",
+      params={
+        "q": text,
+        "lang": language
+      }
+    ).json().get("embedding")[0]
+
+  def generate_multilingual_datasets(self):
+    datasets = {
+      "hindi_headlines": random.sample(self.transform_hindi_headlines_data(), 400),
+      "ciper": random.sample(self.transform_ciper_data(), 400),
+      "fact_pairs": random.sample(self.fact_pairs_from_csv(), 400),
+    }
+    out_datasets = {}
+    for title, rows in datasets.items():
+        out_datasets[title] = []
+        mismatch_indexes = []
+        for i, row in enumerate(rows):
+            mismatch_indexes.append([i, random.sample(set(range(len(rows)))-set([i]), 1)[0]])
+            row["label"] = 1
+            out_datasets[title].append(row)
+        for mismatch in mismatch_indexes:
+            row = {"lookup_text": rows[mismatch[0]].get("lookup_text", ""), "database_text": rows[mismatch[1]].get("database_text", "")}
+            row["label"] = 0
+            out_datasets[title].append(row)
+    return out_datasets
+      
+  def evaluate_laser_model(self, dataset, data_name, language):
+    results = {"resultset": []}
+    mismatch_indexes = []
+    for i,row in enumerate(dataset):
+      score = cosine_sim(self.laser_vector(row.get("lookup_text", ""), language), self.laser_vector(row.get("database_text", ""), language))
+      result = {"result": [{"_score": score, "_source": {"content": row.get("database_text", "")}}]}
+      results["resultset"].append({"fact_pair": row, "response": result, "is_omitted": False})
+      mismatch_indexes.append([i, random.sample(set(range(len(dataset)))-set([i]), 1)[0]])
+    for first, second in mismatch_indexes:
+      row = {"lookup_text": dataset[first].get("lookup_text", ""), "database_text": dataset[second].get("database_text", "")}
+      score = cosine_sim(self.laser_vector(row.get("lookup_text", ""), language), self.laser_vector(row.get("database_text", ""), language))
+      result = {"result": [{"_score": score, "_source": {"content": ""}}]}
+      results["resultset"].append({"fact_pair": row, "response": result, "is_omitted": True})
+    return results
+
+  def run_laser_test(self):
+      return {
+        "hindi_headlines": self.evaluate_laser_model(random.sample(self.transform_hindi_headlines_data(), 400), "hindi_headlines", "hi"),
+        "ciper": self.evaluate_laser_model(random.sample(self.transform_ciper_data(), 400), "ciper", "es"),
+        "fact_pairs": self.evaluate_laser_model(random.sample(self.fact_pairs_from_csv(), 400), "fact_pairs", "en"),
+      }
+
+  def run_multi_test(self, model_name="elasticsearch", use_language_analyzer=True):
     if use_language_analyzer:
       return {
         "hindi_headlines": self.evaluate_model(random.sample(self.transform_hindi_headlines_data(), 400), model_name, [], True, True, "hindi_headlines", "hi"),
@@ -276,29 +337,47 @@ class AlegreClient:
     results = {}
     for report_key in multi_report:
       results[report_key] = self.interpret_report(multi_report[report_key])
+      with open(report_key+'_raw_report.csv', 'w', newline='') as f:
+        writer = csv.writer(f)
+        writer.writerows(results[report_key][0])
     unique_ints = sorted(list(set([e for e in [[int(ee[3]) for ee in e[0] if type(ee[3]) == float] for e in results.values()] for e in e])))
     accuracy_report = {}
-    for i in list(range(unique_ints[0], unique_ints[-1]+1)):
+    if unique_ints:
+      cut_points = list(range(unique_ints[0], unique_ints[-1]+1))
+    else:
+      cut_points = [e/100.0 for e in list(range(1,100))]
+    roc_rows = []
+    for title, rows in results.items():
+        scores = [e['response']['result'][0]["_score"] for e in multi_report[title]["resultset"] if e['response']['result']]
+        maxval = max(scores)
+        probs = [e/float(maxval) for e in scores]
+        labels = [0 if e["is_omitted"] else 1 for e in multi_report[title]["resultset"] if e["response"]["result"]]
+        fpr, tpr, thresholds = roc_curve(labels, probs)
+        for f,t in zip(fpr, tpr):
+            roc_rows.append([title, f, t])
+    with open("roc_rows.csv", 'w', newline='') as f:
+        writer = csv.writer(f)
+        writer.writerows(roc_rows)
+    for i in cut_points:
       for report_key in results:
         if not accuracy_report.get(report_key):
           accuracy_report[report_key] = {}
-        all_results = [e for e in results[report_key][0] if type(e[3]) == float]
+        all_results = [e for e in results[report_key][0] if type(e[3]) == float or type(e[3]) == np.float64]
         tp = 0
         tn = 0
         fp = 0
         fn = 0
         total = 0
         for row in all_results:
-          if type(row[3]) == float:
-            total += 1
-            if row[3] > i and "Success" in row[4]:
-              tp += 1
-            elif row[3] > i and "Success" not in row[4]:
-              fp += 1
-            elif row[3] <= i and "False Positive" in row[4]:
-              tn += 1
-            elif row[3] <= i and "False Positive" not in row[4]:
-              fn += 1
+          total += 1
+          if row[3] > i and "Success" in row[4]:
+            tp += 1
+          elif row[3] > i and "Success" not in row[4]:
+            fp += 1
+          elif row[3] <= i and "False Positive" in row[4]:
+            tn += 1
+          elif row[3] <= i and "False Positive" not in row[4]:
+            fn += 1
         prec = 0
         if float(tp+fp):
           prec = tp/float(tp+fp)
@@ -309,10 +388,11 @@ class AlegreClient:
         if total:
           acc = (tp+tn)/float(total)
         accuracy_report[report_key][i] = {"prec": prec, "recall": recall, "acc": acc, "tp": tp/float(total), "tn": tn/float(total), "fp": fp/float(total), "fn": fn/float(total)}
+    
     return accuracy_report
 
   def accuracy_report_to_table(self, accuracy_report):
-    rows = [["Dataset", "Thresh", "Acc", "Prec", "Recall", "TP", "TN", "FP", "FN"]]
+    rows = [["Dataset", "Thresh", "Acc", "Prec", "Recall", "TP", "TN", "FP", "FN", "Total"]]
     for key in accuracy_report:
       for thresh in accuracy_report[key]:
         row = accuracy_report[key][thresh]
@@ -327,5 +407,9 @@ if __name__ == '__main__':
   import csv
   from alegre_client import AlegreClient
   ac = AlegreClient()
-  report = ac.run_multi_test("elasticsearch", False)
+  report = ac.generate_multilingual_datasets()
+  # f = open("multilingual_sentence_matched_datasets.json", "w")
+  # f.write(json.dumps(report))
+  # f.close()
+  # report = ac.run_multi_test("elasticsearch", True)
   cuts = ac.accuracy_report_to_table(ac.evaluate_cut_points(report))
