@@ -218,7 +218,7 @@ if __name__ == "__main__":
 
         report_str = 'Top 5 Keywords Per Topic:\n'
         for topic in topics:
-            report_str += str(topic)
+            report_str += str(topic) + '\n'
         report_str += '##########################################\n'
 
         results_per_topic = extract_top_k_requests_per_topic(5, partner)
