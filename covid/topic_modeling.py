@@ -14,7 +14,7 @@ import string
 import numpy as np
 import tensorflow as tf
 import tensorflow_hub as hub
-import tensorflow_text
+# import tensorflow_text
 import math
 from scipy.spatial import distance
 
