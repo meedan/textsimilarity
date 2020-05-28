@@ -31,6 +31,10 @@ def angdist(u, v):
     return 1 - math.acos(1 - distance.cosine(u, v)) / math.pi
 
 
+def cosine(u, v):
+    return distance.cosine(u, v)
+
+
 def get_stop_words():
     # nltk.download('stopwords')
     # en_stop = set(nltk.corpus.stopwords.words('english'))
@@ -113,6 +117,48 @@ def do_topic_modeling_per_partner():
         print('##########################################')
 
 
+embedding_cache = [{'key': None, 'value': None}, {'key': None, 'value': None}]
+def is_a_match(a, b, threshold):
+    if a == embedding_cache[0]['key']:
+        a_embedding = embedding_cache[0]['value']
+    else:
+        a_embedding = get_sentence_embedding(a)
+        embedding_cache[0]['key'] = a
+        embedding_cache[0]['value'] = a_embedding
+    if b == embedding_cache[1]['key']:
+        b_embedding = embedding_cache[0]['value']
+    else:
+        b_embedding = get_sentence_embedding(b)
+        embedding_cache[1]['key'] = b
+        embedding_cache[1]['value'] = b_embedding
+    return cosine(a_embedding, b_embedding) >= threshold
+
+
+def remove_duplicates_based_on_pm_id(tips):
+    pm_id_set = set([c['pm_id'] for c in tips])
+    cleaned_tips = []
+    for pm_id in pm_id_set:
+        for tip in tips:
+            if tip['pm_id'] == pm_id:
+                cleaned_tips.append(tip)
+                break
+
+    return cleaned_tips
+
+
+def remove_duplicate_requests(tips):
+    checked_pm_ids = set()
+    for tip in tips:
+        if tip['pm_id'] in checked_pm_ids:
+            continue
+        for other_tip in tips:
+            if tip != other_tip and is_a_match(tip['text'], other_tip['text'], 0.75):
+                other_tip['pm_id'] = tip['pm_id']
+                checked_pm_ids.add(tip['pm_id'])
+
+    return remove_duplicates_based_on_pm_id(tips)
+
+
 def load_covid_data():
     with open('covid.csv') as csvfile:
         tip_line_requests = csv.reader(csvfile)
@@ -131,6 +177,7 @@ def load_covid_data():
     for tip in tip_line_requests:
         tip['text'] = tip['media_text'] if tip['media_text'] != 'NA' and len(tip['media_text']) >= len(tip['media_title']) else tip['media_title']
     tip_line_requests = [tip for tip in tip_line_requests if tip['text'] != 'NA']
+    tip_line_requests = remove_duplicate_requests(tip_line_requests)
 
     partners = set([item['team_slug'] for item in tip_line_requests])
     temp_tip_line_requests = {}
@@ -148,7 +195,7 @@ def textrank(texts, damping_factor=0.8, similarity_threshold=0.8):
         similarities = {}
         for j, embedding in enumerate(texts_embeddings):
             if i != j:
-                similarities[texts[j]] = angdist(embedding, texts_embeddings[i])
+                similarities[texts[j]] = cosine(embedding, texts_embeddings[i])
 
         text_similarities[text] = similarities
 
@@ -204,7 +251,7 @@ def extract_top_k_requests_per_topic(k, partner):
 
 
 if __name__ == "__main__":
-    # do_topic_modeling_per_partner()
+    do_topic_modeling_per_partner()
 
     partners = ['afp-fact-check', 'afp-checamos', 'india-today', 'boom-factcheck', 'africa-check']
 
