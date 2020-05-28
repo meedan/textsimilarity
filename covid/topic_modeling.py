@@ -38,7 +38,7 @@ def cosine(u, v):
 def get_stop_words():
     # nltk.download('stopwords')
     # en_stop = set(nltk.corpus.stopwords.words('english'))
-    with open('../data/stopwords-en.txt') as fp:
+    with open('../data/stopwords-en_2.txt') as fp:
         stopwords = fp.readlines()
     with open('../data/stopwords-hi.txt') as fp:
         stopwords += fp.readlines()
