@@ -154,7 +154,7 @@ def remove_duplicates_based_on_pm_id(tips):
     return cleaned_tips
 
 
-def remove_duplicate_requests(tips, lang):
+def remove_duplicate_requests(tips):
     checked_pm_ids = set()
     for tip in tips:
         if tip['pm_id'] in checked_pm_ids:
@@ -194,12 +194,13 @@ def load_covid_data():
     for partner in partners:
         partner_tips = [item for item in tip_line_requests if item['team_slug'] == partner]
         temp_tip_line_requests[partner] = {lang: [] for lang in partner_languages[partner]}
+        print(temp_tip_line_requests)
         for tip in partner_tips:
             if tip['language'] in partner_languages[partner]:
                 tip['embedding'] = get_sentence_embedding(tip['text'], tip['language'])
                 temp_tip_line_requests[partner][tip['language']] = tip
         for language in partner_languages[partner]:
-            temp_tip_line_requests[partner][language] = remove_duplicate_requests(temp_tip_line_requests[partner][language], language)
+            temp_tip_line_requests[partner][language] = remove_duplicate_requests(temp_tip_line_requests[partner][language])
 
     tip_line_requests = temp_tip_line_requests
     return partners, tip_line_requests
