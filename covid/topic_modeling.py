@@ -21,6 +21,14 @@ parser = English()
 punctuation_translator = str.maketrans('', '', string.punctuation)
 laser = Laser()
 
+partner_languages = {
+    'afp-checamos': ['pt'],
+    'africa-check': ['en'],
+    'afp-fact-check': ['en', 'hi'],
+    'india-today': ['en', 'hi'],
+    'boom-factcheck': ['en', 'hi']
+}
+
 
 def get_sentence_embedding(text, lang):
     return laser.embed_sentences([text], lang=lang)
@@ -94,43 +102,44 @@ def do_topic_modeling_per_partner():
     partners, tip_line_requests = load_covid_data()
 
     for partner in partners:
-        requests_tokens = []
-        for tip in tip_line_requests[partner]:
-            tokens = prepare_text_for_lda(tip['text'])
-            requests_tokens.append(tokens)
+        for language in tip_line_requests[partner]:
+            requests_tokens = []
+            for tip in tip_line_requests[partner][language]:
+                tokens = prepare_text_for_lda(tip['text'])
+                requests_tokens.append(tokens)
 
-        dictionary = corpora.Dictionary(requests_tokens)
-        corpus = [dictionary.doc2bow(text) for text in requests_tokens]
+            dictionary = corpora.Dictionary(requests_tokens)
+            corpus = [dictionary.doc2bow(text) for text in requests_tokens]
 
-        pickle.dump(corpus, open('corpus_{}.pkl'.format(partner), 'wb'))
-        dictionary.save('dictionary_{}.gensim'.format(partner))
+            pickle.dump(corpus, open('corpus_{}_{}.pkl'.format(partner, language), 'wb'))
+            dictionary.save('dictionary_{}_{}.gensim'.format(partner, language))
 
-        NUM_TOPICS = 5
-        ldamodel = gensim.models.ldamodel.LdaModel(corpus, num_topics=NUM_TOPICS, id2word=dictionary, passes=100)
-        ldamodel.save('model100_{}.gensim'.format(partner))
-        topics = ldamodel.print_topics(num_words=5)
+            NUM_TOPICS = 5
+            ldamodel = gensim.models.ldamodel.LdaModel(corpus, num_topics=NUM_TOPICS, id2word=dictionary, passes=100)
+            ldamodel.save('model100_{}_{}.gensim'.format(partner, language))
+            topics = ldamodel.print_topics(num_words=5)
 
-        print('Partner: {}'.format(partner))
-        for topic in topics:
-            print(topic)
-        print('##########################################')
+            print('Partner: {}, Language: {}'.format(partner, language))
+            for topic in topics:
+                print(topic)
+            print('##########################################')
 
 
-embedding_cache = [{'key': None, 'value': None}, {'key': None, 'value': None}]
-def is_a_match(a, b, threshold, lang):
-    if a == embedding_cache[0]['key']:
-        a_embedding = embedding_cache[0]['value']
-    else:
-        a_embedding = get_sentence_embedding(a, lang)
-        embedding_cache[0]['key'] = a
-        embedding_cache[0]['value'] = a_embedding
-    if b == embedding_cache[1]['key']:
-        b_embedding = embedding_cache[0]['value']
-    else:
-        b_embedding = get_sentence_embedding(b, lang)
-        embedding_cache[1]['key'] = b
-        embedding_cache[1]['value'] = b_embedding
-    return cosine(a_embedding, b_embedding) >= threshold
+# embedding_cache = [{'key': None, 'value': None}, {'key': None, 'value': None}]
+def is_a_match(a, b, threshold):
+    # if a == embedding_cache[0]['key']:
+    #     a_embedding = embedding_cache[0]['value']
+    # else:
+    #     a_embedding = get_sentence_embedding(a, lang)
+    #     embedding_cache[0]['key'] = a
+    #     embedding_cache[0]['value'] = a_embedding
+    # if b == embedding_cache[1]['key']:
+    #     b_embedding = embedding_cache[0]['value']
+    # else:
+    #     b_embedding = get_sentence_embedding(b, lang)
+    #     embedding_cache[1]['key'] = b
+    #     embedding_cache[1]['value'] = b_embedding
+    return cosine(a, b) >= threshold
 
 
 def remove_duplicates_based_on_pm_id(tips):
@@ -145,13 +154,13 @@ def remove_duplicates_based_on_pm_id(tips):
     return cleaned_tips
 
 
-def remove_duplicate_requests(tips):
+def remove_duplicate_requests(tips, lang):
     checked_pm_ids = set()
     for tip in tips:
         if tip['pm_id'] in checked_pm_ids:
             continue
         for other_tip in tips:
-            if tip != other_tip and is_a_match(tip['text'], other_tip['text'], 0.75, tip['language']):
+            if tip != other_tip and is_a_match(tip['embedding'], other_tip['embedding'], 0.75):
                 other_tip['pm_id'] = tip['pm_id']
                 checked_pm_ids.add(tip['pm_id'])
 
@@ -177,17 +186,20 @@ def load_covid_data():
         tip['text'] = tip['media_text'] if tip['media_text'] != 'NA' and len(tip['media_text']) >= len(tip['media_title']) else tip['media_title']
         lang_data = cld3.get_language(tip['text'])
         if lang_data is not None:
-            tip['language'] = cld3.get_language(tip['text']).language
+            tip['language'] = lang_data.language
+            tip['embedding'] = get_sentence_embedding(tip['text'], tip['language'])
     tip_line_requests = [tip for tip in tip_line_requests if tip['text'] != 'NA' and not tip['text'].isspace() and 'language' in tip]
-    # tip_line_requests = remove_duplicate_requests(tip_line_requests)
 
     partners = set([item['team_slug'] for item in tip_line_requests])
     temp_tip_line_requests = {}
-    from collections import Counter
     for partner in partners:
-        temp_tip_line_requests[partner] = [item for item in tip_line_requests if item['team_slug'] == partner]
-        partner_languages = Counter([item['language'] for item in temp_tip_line_requests[partner]])
-        print('partner: {}, langs: {}'.format(partner, partner_languages))
+        partner_tips = [item for item in tip_line_requests if item['team_slug'] == partner]
+        temp_tip_line_requests[partner] = {lang: [] for lang in partner_languages[partner]}
+        for tip in partner_tips:
+            if tip['language'] in partner_languages[partner]:
+                temp_tip_line_requests[partner][tip['language']] = tip
+        for language in partner_languages[partner]:
+            temp_tip_line_requests[partner][language] = remove_duplicate_requests(temp_tip_line_requests[partner][language], language)
 
     tip_line_requests = temp_tip_line_requests
     return partners, tip_line_requests
@@ -227,9 +239,9 @@ def textrank(texts, lang, damping_factor=0.8, similarity_threshold=0.8):
     return ranks
 
 
-def extract_top_k_requests_per_topic(k, partner):
-    ldamodel = gensim.models.ldamodel.LdaModel.load('model100_{}.gensim'.format(partner))
-    with open('corpus_{}.pkl'.format(partner), 'rb') as corpus_file:
+def extract_top_k_requests_per_topic(k, partner, language):
+    ldamodel = gensim.models.ldamodel.LdaModel.load('model100_{}_{}.gensim'.format(partner, language))
+    with open('corpus_{}_{}.pkl'.format(partner, language), 'rb') as corpus_file:
         corpus = pickle.load(corpus_file)
     # dictionary = corpora.Dictionary.load('dictionary_{}.gensim'.format(partner))
 
@@ -245,7 +257,7 @@ def extract_top_k_requests_per_topic(k, partner):
         topic_set[best_topic_id].append(i)
 
     _, tips = load_covid_data()
-    partner_tips = tips[partner]
+    partner_tips = tips[partner][language]
 
     results_per_topic = [[] for i in range(5)]
     for i, topic_ids in enumerate(topic_set):
@@ -263,25 +275,26 @@ if __name__ == "__main__":
     # partners = ['afp-fact-check', 'afp-checamos', 'india-today', 'boom-factcheck', 'africa-check']
     #
     # for partner in partners:
-    #     ldamodel = gensim.models.ldamodel.LdaModel.load('model100_{}.gensim'.format(partner))
-    #     topics = ldamodel.print_topics(num_words=5)
+    #     for language in partner_languages[partner]:
+    #         ldamodel = gensim.models.ldamodel.LdaModel.load('model100_{}_{}.gensim'.format(partner, language))
+    #         topics = ldamodel.print_topics(num_words=5)
     #
-    #     report_str = ''
+    #         report_str = ''
     #
-    #     report_str += 'Partner: {}\n'.format(partner)
+    #         report_str += 'Partner: {}, Language: {}\n'.format(partner, language)
     #
-    #     report_str = 'Top 5 Keywords Per Topic:\n'
-    #     for topic in topics:
-    #         report_str += str(topic) + '\n'
-    #     report_str += '##########################################\n'
-    #
-    #     results_per_topic = extract_top_k_requests_per_topic(5, partner)
-    #     for i, result_set in enumerate(results_per_topic):
-    #         report_str += 'Examples for Topic {}:\n'.format(i)
-    #         for result in result_set:
-    #             report_str += result + '\n'
-    #             report_str += '------------------------------------------\n'
+    #         report_str = 'Top 5 Keywords Per Topic:\n'
+    #         for topic in topics:
+    #             report_str += str(topic) + '\n'
     #         report_str += '##########################################\n'
     #
-    #     with open("report_{}.txt".format(partner), "w") as report_file:
-    #         report_file.write(report_str)
+    #         results_per_topic = extract_top_k_requests_per_topic(5, partner, language)
+    #         for i, result_set in enumerate(results_per_topic):
+    #             report_str += 'Examples for Topic {}:\n'.format(i)
+    #             for result in result_set:
+    #                 report_str += result + '\n'
+    #                 report_str += '------------------------------------------\n'
+    #             report_str += '##########################################\n'
+    #
+    #         with open("report_{}_{}.txt".format(partner, language), "w") as report_file:
+    #             report_file.write(report_str)
