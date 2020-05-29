@@ -3,3 +3,4 @@ gensim
 nltk
 laserembeddings[en, hi, pt]
 pycld3
+sklearn
