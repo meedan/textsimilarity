@@ -179,7 +179,7 @@ def load_covid_data():
         if lang_data is not None:
             tip['language'] = cld3.get_language(tip['text']).language
     tip_line_requests = [tip for tip in tip_line_requests if tip['text'] != 'NA' and not tip['text'].isspace() and 'language' in tip]
-    tip_line_requests = remove_duplicate_requests(tip_line_requests)
+    # tip_line_requests = remove_duplicate_requests(tip_line_requests)
 
     partners = set([item['team_slug'] for item in tip_line_requests])
     temp_tip_line_requests = {}
