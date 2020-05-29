@@ -22,7 +22,7 @@ punctuation_translator = str.maketrans('', '', string.punctuation)
 
 
 def get_sentence_embedding(text, lang):
-    return Laser.embed_sentences([text], lang=lang)
+    return Laser.embed_sentences(sentences=[text], lang=lang)
 
 
 def angdist(u, v):
