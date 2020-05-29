@@ -123,6 +123,7 @@ def do_topic_modeling_per_partner():
             for topic in topics:
                 print(topic)
             print('##########################################')
+    return partners, tip_line_requests
 
 
 # embedding_cache = [{'key': None, 'value': None}, {'key': None, 'value': None}]
@@ -194,7 +195,6 @@ def load_covid_data():
     for partner in partners:
         partner_tips = [item for item in tip_line_requests if item['team_slug'] == partner]
         temp_tip_line_requests[partner] = {lang: [] for lang in partner_languages[partner]}
-        print(temp_tip_line_requests)
         for tip in partner_tips:
             if tip['language'] in partner_languages[partner]:
                 tip['embedding'] = get_sentence_embedding(tip['text'], tip['language'])
@@ -240,7 +240,7 @@ def textrank(texts, lang, damping_factor=0.8, similarity_threshold=0.8):
     return ranks
 
 
-def extract_top_k_requests_per_topic(k, partner, language):
+def extract_top_k_requests_per_topic(k, partner, language, tips):
     ldamodel = gensim.models.ldamodel.LdaModel.load('model100_{}_{}.gensim'.format(partner, language))
     with open('corpus_{}_{}.pkl'.format(partner, language), 'rb') as corpus_file:
         corpus = pickle.load(corpus_file)
@@ -257,7 +257,8 @@ def extract_top_k_requests_per_topic(k, partner, language):
                 best_topic_score = topic[1]
         topic_set[best_topic_id].append(i)
 
-    _, tips = load_covid_data()
+    if tips is None:
+        _, tips = load_covid_data()
     partner_tips = tips[partner][language]
 
     results_per_topic = [[] for i in range(5)]
@@ -270,9 +271,11 @@ def extract_top_k_requests_per_topic(k, partner, language):
 
 
 if __name__ == "__main__":
-    do_topic_modeling_per_partner()
+    print('starting topic modeling...')
+    partners, tip_line_requests = do_topic_modeling_per_partner()
+    print('topic modeling done.')
 
-    partners = ['afp-fact-check', 'afp-checamos', 'india-today', 'boom-factcheck', 'africa-check']
+    # partners = ['afp-fact-check', 'afp-checamos', 'india-today', 'boom-factcheck', 'africa-check']
 
     for partner in partners:
         for language in partner_languages[partner]:
@@ -288,7 +291,7 @@ if __name__ == "__main__":
                 report_str += str(topic) + '\n'
             report_str += '##########################################\n'
 
-            results_per_topic = extract_top_k_requests_per_topic(5, partner, language)
+            results_per_topic = extract_top_k_requests_per_topic(5, partner, language, tip_line_requests)
             for i, result_set in enumerate(results_per_topic):
                 report_str += 'Examples for Topic {}:\n'.format(i)
                 for result in result_set:
