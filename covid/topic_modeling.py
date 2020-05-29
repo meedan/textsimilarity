@@ -198,7 +198,7 @@ def load_covid_data():
         for tip in partner_tips:
             if tip['language'] in partner_languages[partner]:
                 tip['embedding'] = get_sentence_embedding(tip['text'], tip['language'])
-                temp_tip_line_requests[partner][tip['language']] = tip
+                temp_tip_line_requests[partner][tip['language']].append(tip)
         for language in partner_languages[partner]:
             temp_tip_line_requests[partner][language] = remove_duplicate_requests(temp_tip_line_requests[partner][language])
 
