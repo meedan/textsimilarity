@@ -269,32 +269,31 @@ def extract_top_k_requests_per_topic(k, partner, language):
 
 
 if __name__ == "__main__":
-    load_covid_data()
-    # do_topic_modeling_per_partner()
-    #
-    # partners = ['afp-fact-check', 'afp-checamos', 'india-today', 'boom-factcheck', 'africa-check']
-    #
-    # for partner in partners:
-    #     for language in partner_languages[partner]:
-    #         ldamodel = gensim.models.ldamodel.LdaModel.load('model100_{}_{}.gensim'.format(partner, language))
-    #         topics = ldamodel.print_topics(num_words=5)
-    #
-    #         report_str = ''
-    #
-    #         report_str += 'Partner: {}, Language: {}\n'.format(partner, language)
-    #
-    #         report_str = 'Top 5 Keywords Per Topic:\n'
-    #         for topic in topics:
-    #             report_str += str(topic) + '\n'
-    #         report_str += '##########################################\n'
-    #
-    #         results_per_topic = extract_top_k_requests_per_topic(5, partner, language)
-    #         for i, result_set in enumerate(results_per_topic):
-    #             report_str += 'Examples for Topic {}:\n'.format(i)
-    #             for result in result_set:
-    #                 report_str += result + '\n'
-    #                 report_str += '------------------------------------------\n'
-    #             report_str += '##########################################\n'
-    #
-    #         with open("report_{}_{}.txt".format(partner, language), "w") as report_file:
-    #             report_file.write(report_str)
+    do_topic_modeling_per_partner()
+
+    partners = ['afp-fact-check', 'afp-checamos', 'india-today', 'boom-factcheck', 'africa-check']
+
+    for partner in partners:
+        for language in partner_languages[partner]:
+            ldamodel = gensim.models.ldamodel.LdaModel.load('model100_{}_{}.gensim'.format(partner, language))
+            topics = ldamodel.print_topics(num_words=5)
+
+            report_str = ''
+
+            report_str += 'Partner: {}, Language: {}\n'.format(partner, language)
+
+            report_str = 'Top 5 Keywords Per Topic:\n'
+            for topic in topics:
+                report_str += str(topic) + '\n'
+            report_str += '##########################################\n'
+
+            results_per_topic = extract_top_k_requests_per_topic(5, partner, language)
+            for i, result_set in enumerate(results_per_topic):
+                report_str += 'Examples for Topic {}:\n'.format(i)
+                for result in result_set:
+                    report_str += result + '\n'
+                    report_str += '------------------------------------------\n'
+                report_str += '##########################################\n'
+
+            with open("report_{}_{}.txt".format(partner, language), "w") as report_file:
+                report_file.write(report_str)
