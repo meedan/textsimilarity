@@ -187,7 +187,6 @@ def load_covid_data():
         lang_data = cld3.get_language(tip['text'])
         if lang_data is not None:
             tip['language'] = lang_data.language
-            tip['embedding'] = get_sentence_embedding(tip['text'], tip['language'])
     tip_line_requests = [tip for tip in tip_line_requests if tip['text'] != 'NA' and not tip['text'].isspace() and 'language' in tip]
 
     partners = set([item['team_slug'] for item in tip_line_requests])
@@ -197,6 +196,7 @@ def load_covid_data():
         temp_tip_line_requests[partner] = {lang: [] for lang in partner_languages[partner]}
         for tip in partner_tips:
             if tip['language'] in partner_languages[partner]:
+                tip['embedding'] = get_sentence_embedding(tip['text'], tip['language'])
                 temp_tip_line_requests[partner][tip['language']] = tip
         for language in partner_languages[partner]:
             temp_tip_line_requests[partner][language] = remove_duplicate_requests(temp_tip_line_requests[partner][language], language)
