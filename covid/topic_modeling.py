@@ -150,7 +150,7 @@ def remove_duplicate_requests(tips):
         if tip['pm_id'] in checked_pm_ids:
             continue
         for other_tip in tips:
-            if tip != other_tip and is_a_match(tip['text'], other_tip['text'], 0.75, tip['lang']):
+            if tip != other_tip and is_a_match(tip['text'], other_tip['text'], 0.75, tip['language']):
                 other_tip['pm_id'] = tip['pm_id']
                 checked_pm_ids.add(tip['pm_id'])
 
@@ -184,6 +184,9 @@ def load_covid_data():
     temp_tip_line_requests = {}
     for partner in partners:
         temp_tip_line_requests[partner] = [item for item in tip_line_requests if item['team_slug'] == partner]
+        partner_languages = set([item['language'] for item in temp_tip_line_requests[partner]])
+        print('partner: {}, langs: {}'.format(partner, partner_languages))
+
     tip_line_requests = temp_tip_line_requests
     return partners, tip_line_requests
 
@@ -252,30 +255,31 @@ def extract_top_k_requests_per_topic(k, partner):
 
 
 if __name__ == "__main__":
-    do_topic_modeling_per_partner()
-
-    partners = ['afp-fact-check', 'afp-checamos', 'india-today', 'boom-factcheck', 'africa-check']
-
-    for partner in partners:
-        ldamodel = gensim.models.ldamodel.LdaModel.load('model100_{}.gensim'.format(partner))
-        topics = ldamodel.print_topics(num_words=5)
-
-        report_str = ''
-
-        report_str += 'Partner: {}\n'.format(partner)
-
-        report_str = 'Top 5 Keywords Per Topic:\n'
-        for topic in topics:
-            report_str += str(topic) + '\n'
-        report_str += '##########################################\n'
-
-        results_per_topic = extract_top_k_requests_per_topic(5, partner)
-        for i, result_set in enumerate(results_per_topic):
-            report_str += 'Examples for Topic {}:\n'.format(i)
-            for result in result_set:
-                report_str += result + '\n'
-                report_str += '------------------------------------------\n'
-            report_str += '##########################################\n'
-
-        with open("report_{}.txt".format(partner), "w") as report_file:
-            report_file.write(report_str)
+    load_covid_data()
+    # do_topic_modeling_per_partner()
+    #
+    # partners = ['afp-fact-check', 'afp-checamos', 'india-today', 'boom-factcheck', 'africa-check']
+    #
+    # for partner in partners:
+    #     ldamodel = gensim.models.ldamodel.LdaModel.load('model100_{}.gensim'.format(partner))
+    #     topics = ldamodel.print_topics(num_words=5)
+    #
+    #     report_str = ''
+    #
+    #     report_str += 'Partner: {}\n'.format(partner)
+    #
+    #     report_str = 'Top 5 Keywords Per Topic:\n'
+    #     for topic in topics:
+    #         report_str += str(topic) + '\n'
+    #     report_str += '##########################################\n'
+    #
+    #     results_per_topic = extract_top_k_requests_per_topic(5, partner)
+    #     for i, result_set in enumerate(results_per_topic):
+    #         report_str += 'Examples for Topic {}:\n'.format(i)
+    #         for result in result_set:
+    #             report_str += result + '\n'
+    #             report_str += '------------------------------------------\n'
+    #         report_str += '##########################################\n'
+    #
+    #     with open("report_{}.txt".format(partner), "w") as report_file:
+    #         report_file.write(report_str)
