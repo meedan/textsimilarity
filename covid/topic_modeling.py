@@ -12,19 +12,17 @@ import pickle
 import gensim
 import string
 import numpy as np
-import tensorflow as tf
-import tensorflow_hub as hub
-import tensorflow_text
+from laserembeddings import Laser
 import math
+import cld3
 from scipy.spatial import distance
 
 parser = English()
 punctuation_translator = str.maketrans('', '', string.punctuation)
-unisent_multilingual = hub.load("https://tfhub.dev/google/universal-sentence-encoder-multilingual-large/3")
 
 
-def get_sentence_embedding(text):
-    return unisent_multilingual([text]).numpy()
+def get_sentence_embedding(text, lang):
+    return Laser.embed_sentences([text], lang)
 
 
 def angdist(u, v):
@@ -118,17 +116,17 @@ def do_topic_modeling_per_partner():
 
 
 embedding_cache = [{'key': None, 'value': None}, {'key': None, 'value': None}]
-def is_a_match(a, b, threshold):
+def is_a_match(a, b, threshold, lang):
     if a == embedding_cache[0]['key']:
         a_embedding = embedding_cache[0]['value']
     else:
-        a_embedding = get_sentence_embedding(a)
+        a_embedding = get_sentence_embedding(a, lang)
         embedding_cache[0]['key'] = a
         embedding_cache[0]['value'] = a_embedding
     if b == embedding_cache[1]['key']:
         b_embedding = embedding_cache[0]['value']
     else:
-        b_embedding = get_sentence_embedding(b)
+        b_embedding = get_sentence_embedding(b, lang)
         embedding_cache[1]['key'] = b
         embedding_cache[1]['value'] = b_embedding
     return cosine(a_embedding, b_embedding) >= threshold
@@ -152,7 +150,7 @@ def remove_duplicate_requests(tips):
         if tip['pm_id'] in checked_pm_ids:
             continue
         for other_tip in tips:
-            if tip != other_tip and is_a_match(tip['text'], other_tip['text'], 0.75):
+            if tip != other_tip and is_a_match(tip['text'], other_tip['text'], 0.75, tip['lang']):
                 other_tip['pm_id'] = tip['pm_id']
                 checked_pm_ids.add(tip['pm_id'])
 
@@ -176,6 +174,7 @@ def load_covid_data():
 
     for tip in tip_line_requests:
         tip['text'] = tip['media_text'] if tip['media_text'] != 'NA' and len(tip['media_text']) >= len(tip['media_title']) else tip['media_title']
+        tip['language'] = cld3.get_language(tip['text']).language
     tip_line_requests = [tip for tip in tip_line_requests if tip['text'] != 'NA']
     tip_line_requests = remove_duplicate_requests(tip_line_requests)
 
