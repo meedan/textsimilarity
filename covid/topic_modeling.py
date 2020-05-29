@@ -183,9 +183,10 @@ def load_covid_data():
 
     partners = set([item['team_slug'] for item in tip_line_requests])
     temp_tip_line_requests = {}
+    from collections import Counter
     for partner in partners:
         temp_tip_line_requests[partner] = [item for item in tip_line_requests if item['team_slug'] == partner]
-        partner_languages = set([item['language'] for item in temp_tip_line_requests[partner]])
+        partner_languages = Counter([item['language'] for item in temp_tip_line_requests[partner]])
         print('partner: {}, langs: {}'.format(partner, partner_languages))
 
     tip_line_requests = temp_tip_line_requests
