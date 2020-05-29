@@ -16,6 +16,10 @@ from laserembeddings import Laser
 import math
 import cld3
 from scipy.spatial import distance
+from sklearn.cluster import KMeans
+from collections import Counter
+from sklearn.metrics import pairwise_distances_argmin_min
+
 
 parser = English()
 punctuation_translator = str.maketrans('', '', string.punctuation)
@@ -31,7 +35,10 @@ partner_languages = {
 
 
 def get_sentence_embedding(text, lang):
-    return laser.embed_sentences([text], lang=lang)
+    if isinstance(text, list):
+        return laser.embed_sentences(text, lang=lang)
+    else:
+        return laser.embed_sentences([text], lang=lang)
 
 
 def angdist(u, v):
@@ -197,7 +204,7 @@ def load_covid_data():
         temp_tip_line_requests[partner] = {lang: [] for lang in partner_languages[partner]}
         for tip in partner_tips:
             if tip['language'] in partner_languages[partner]:
-                tip['embedding'] = get_sentence_embedding(tip['text'], tip['language'])
+                # tip['embedding'] = get_sentence_embedding(tip['text'], tip['language'])
                 temp_tip_line_requests[partner][tip['language']].append(tip)
         for language in partner_languages[partner]:
             temp_tip_line_requests[partner][language] = remove_duplicate_requests(temp_tip_line_requests[partner][language])
@@ -269,13 +276,12 @@ def extract_top_k_requests_per_topic(k, partner, language, tips):
     return results_per_topic
 
 
-if __name__ == "__main__":
+def generate_topic_modeling_report():
+    global language
     print('starting topic modeling...')
     partners, tip_line_requests = do_topic_modeling_per_partner()
     print('topic modeling done.')
-
     # partners = ['afp-fact-check', 'afp-checamos', 'india-today', 'boom-factcheck', 'africa-check']
-
     for partner in partners:
         for language in partner_languages[partner]:
             ldamodel = gensim.models.ldamodel.LdaModel.load('model100_{}_{}.gensim'.format(partner, language))
@@ -300,3 +306,48 @@ if __name__ == "__main__":
 
             with open("report_{}_{}.txt".format(partner, language), "w") as report_file:
                 report_file.write(report_str)
+
+
+def get_sentences(text, lang):
+    sentences = nltk.sent_tokenize(text, language=lang)
+    sentences = [s for s in sentences if s and not s.isspace()]
+    return sentences
+
+
+if __name__ == "__main__":
+    partners, tips = load_covid_data()
+
+    # breaking each tip into sentences
+    sentence_level_tips = {}
+    for partner in tips:
+        sentence_level_tips[partner] = {}
+        for language in tips[partner]:
+            sentence_level_tips[partner][language] = []
+            for tip in tips[partner][language]:
+                sentences = get_sentences(tip['text'], language)
+                embeddings = get_sentence_embedding(sentences, language)
+                sentence_level_tips[partner][language] += [{'text': sentences[i], 'embedding': embeddings[i]} for i in range(len(sentences))]
+
+    # clustering sentences per partner per language
+    for partner in sentence_level_tips:
+        for language in sentence_level_tips[partner]:
+            embeddings = [tip['embedding'] for tip in sentence_level_tips[partner][language]]
+            n_clusters = max(5, round(len(embeddings)*0.0015))
+            kmeans = KMeans(n_clusters=n_clusters, random_state=0).fit(embeddings)
+
+            # how many points per cluster
+            predictions = kmeans.predict(embeddings)
+            distribution = Counter(predictions)
+            print(distribution.most_common(n_clusters))
+
+            # closest points to centers
+            closest_embeddings, _ = pairwise_distances_argmin_min(kmeans.cluster_centers_, embeddings)
+            closest_sentences = []
+
+            for closest_embedding in closest_embeddings:
+                for tip in sentence_level_tips[partner][language]:
+                    if tip['embedding'] == closest_embedding:
+                        closest_sentences.append(tip['text'])
+                        break
+            print(closest_sentences)
+            print('################################################')
