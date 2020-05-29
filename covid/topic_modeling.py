@@ -206,9 +206,7 @@ def load_covid_data():
     return partners, tip_line_requests
 
 
-def textrank(texts, lang, damping_factor=0.8, similarity_threshold=0.8):
-    texts_embeddings = [get_sentence_embedding(p, lang) for p in texts]
-
+def textrank(texts, texts_embeddings, damping_factor=0.8, similarity_threshold=0.8):
     text_similarities = {}
     for i, text in enumerate(texts):
         similarities = {}
@@ -263,8 +261,9 @@ def extract_top_k_requests_per_topic(k, partner, language, tips):
 
     results_per_topic = [[] for i in range(5)]
     for i, topic_ids in enumerate(topic_set):
-        topic_tips = [tip['text'] for i, tip in enumerate(partner_tips) if i in topic_ids]
-        ranks = textrank(topic_tips, topic_tips[0]['language'])
+        topic_tips= [tip['text'] for i, tip in enumerate(partner_tips) if i in topic_ids]
+        topic_tips_embeddings = [tip['embedding'] for i, tip in enumerate(partner_tips) if i in topic_ids]
+        ranks = textrank(topic_tips, topic_tips_embeddings)
         results_per_topic[i] = [text for text, rank in sorted(zip(topic_tips, ranks), key=lambda item: item[1], reverse=True)[:min(k, len(topic_ids))]]
 
     return results_per_topic
