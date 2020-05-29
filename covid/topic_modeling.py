@@ -174,7 +174,11 @@ def load_covid_data():
 
     for tip in tip_line_requests:
         tip['text'] = tip['media_text'] if tip['media_text'] != 'NA' and len(tip['media_text']) >= len(tip['media_title']) else tip['media_title']
-        tip['language'] = cld3.get_language(tip['text']).language
+        lang_data = cld3.get_language(tip['text'])
+        if lang_data is None:
+            print(tip['text'])
+        else:
+            tip['language'] = cld3.get_language(tip['text']).language
     tip_line_requests = [tip for tip in tip_line_requests if tip['text'] != 'NA']
     tip_line_requests = remove_duplicate_requests(tip_line_requests)
 
@@ -186,8 +190,8 @@ def load_covid_data():
     return partners, tip_line_requests
 
 
-def textrank(texts, damping_factor=0.8, similarity_threshold=0.8):
-    texts_embeddings = [get_sentence_embedding(p) for p in texts]
+def textrank(texts, lang, damping_factor=0.8, similarity_threshold=0.8):
+    texts_embeddings = [get_sentence_embedding(p, lang) for p in texts]
 
     text_similarities = {}
     for i, text in enumerate(texts):
@@ -243,7 +247,7 @@ def extract_top_k_requests_per_topic(k, partner):
     results_per_topic = [[] for i in range(5)]
     for i, topic_ids in enumerate(topic_set):
         topic_tips = [tip['text'] for i, tip in enumerate(partner_tips) if i in topic_ids]
-        ranks = textrank(topic_tips)
+        ranks = textrank(topic_tips, topic_tips[0]['language'])
         results_per_topic[i] = [text for text, rank in sorted(zip(topic_tips, ranks), key=lambda item: item[1], reverse=True)[:min(k, len(topic_ids))]]
 
     return results_per_topic
