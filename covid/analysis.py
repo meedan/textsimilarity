@@ -19,6 +19,8 @@ from scipy.spatial import distance
 from sklearn.cluster import KMeans
 from collections import Counter
 from sklearn.metrics import pairwise_distances_argmin_min
+from cleaning import remove_emoji
+from kneed import KneeLocator
 
 
 parser = English()
@@ -197,7 +199,7 @@ def load_covid_data():
     tip_line_requests = temp_tip_line_requests
 
     for tip in tip_line_requests:
-        tip['text'] = tip['media_text'] if tip['media_text'] != 'NA' and len(tip['media_text']) >= len(tip['media_title']) else tip['media_title']
+        tip['text'] = remove_emoji(tip['media_text'] if tip['media_text'] != 'NA' and len(tip['media_text']) >= len(tip['media_title']) else tip['media_title'])
         lang_data = cld3.get_language(tip['text'])
         if lang_data is not None:
             tip['language'] = lang_data.language
@@ -212,8 +214,8 @@ def load_covid_data():
             if tip['language'] in partner_languages[partner]:
                 tip['embedding'] = get_sentence_embedding(tip['text'], tip['language'])
                 temp_tip_line_requests[partner][tip['language']].append(tip)
-        # for language in partner_languages[partner]:
-            # temp_tip_line_requests[partner][language] = remove_duplicate_requests(temp_tip_line_requests[partner][language])
+        for language in partner_languages[partner]:
+            temp_tip_line_requests[partner][language] = remove_duplicate_requests(temp_tip_line_requests[partner][language])
 
     tip_line_requests = temp_tip_line_requests
     return partners, tip_line_requests
@@ -344,7 +346,16 @@ def cluster_tipline_requests():
     for partner in sentence_level_tips:
         for language in sentence_level_tips[partner]:
             embeddings = [tip['embedding'] for tip in sentence_level_tips[partner][language]]
-            n_clusters = max(5, round(len(embeddings) * 0.0015))
+
+            # finding the right number of clusters
+            # n_clusters = max(5, round(len(embeddings) * 0.0015))
+            kmeans_intertias = []
+            for i in range(5, 16):
+                kmeans = KMeans(n_clusters=i, random_state=0).fit(embeddings)
+                kmeans_intertias.append(kmeans.inertia_)
+            knee_locator = KneeLocator(range(5, 16), kmeans_intertias, curve='convex', direction='decreasing')
+            n_clusters = knee_locator.knee
+
             kmeans = KMeans(n_clusters=n_clusters, random_state=0).fit(embeddings)
 
             # how many points per cluster
