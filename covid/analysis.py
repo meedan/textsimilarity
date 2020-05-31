@@ -353,13 +353,9 @@ def cluster_tipline_requests():
             print(distribution.most_common(n_clusters))
 
             # closest points to centers
-            closest_embeddings, _ = pairwise_distances_argmin_min(kmeans.cluster_centers_, embeddings)
-            closest_sentences = []
-            for closest_embedding in closest_embeddings:
-                for tip in sentence_level_tips[partner][language]:
-                    if (tip['embedding'] == closest_embedding).all():
-                        closest_sentences.append(tip['text'])
-                        break
+            closest_embeddings_idx, _ = pairwise_distances_argmin_min(kmeans.cluster_centers_, embeddings)
+            closest_sentences = [sentence_level_tips[partner][language][idx]['text'] for idx in closest_embeddings_idx]
+
             print(closest_sentences)
             print('################################################')
 
