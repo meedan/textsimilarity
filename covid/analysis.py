@@ -213,7 +213,7 @@ def load_covid_data():
                 tip['embedding'] = get_sentence_embedding(tip['text'], tip['language'])
                 temp_tip_line_requests[partner][tip['language']].append(tip)
         for language in partner_languages[partner]:
-            temp_tip_line_requests[partner][language] = remove_duplicate_requests(temp_tip_line_requests[partner][language])
+            # temp_tip_line_requests[partner][language] = remove_duplicate_requests(temp_tip_line_requests[partner][language])
 
     tip_line_requests = temp_tip_line_requests
     return partners, tip_line_requests
@@ -357,7 +357,7 @@ def cluster_tipline_requests():
             closest_sentences = []
             for closest_embedding in closest_embeddings:
                 for tip in sentence_level_tips[partner][language]:
-                    if tip['embedding'] == closest_embedding:
+                    if (tip['embedding'] == closest_embedding).all():
                         closest_sentences.append(tip['text'])
                         break
             print(closest_sentences)
