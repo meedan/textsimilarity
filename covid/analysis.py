@@ -309,9 +309,14 @@ def generate_topic_modeling_report():
 
 
 def get_sentences(text, lang):
-    sentences = nltk.sent_tokenize(text, language=lang)
-    sentences = [s for s in sentences if s and not s.isspace()]
-    return sentences
+    if lang == 'en':
+        sentences = nltk.sent_tokenize(text, language=lang)
+        sentences = [s for s in sentences if s and not s.isspace()]
+        return sentences
+    else:
+        paragraphs = text.split('\n')
+        paragraphs = [p for p in paragraphs if p and not p.isspace()]
+        return paragraphs
 
 
 def cluster_tipline_requests():
