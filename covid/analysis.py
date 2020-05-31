@@ -355,20 +355,28 @@ def cluster_tipline_requests():
                 kmeans_intertias.append(kmeans.inertia_)
             knee_locator = KneeLocator(range(5, 16), kmeans_intertias, curve='convex', direction='decreasing')
             n_clusters = knee_locator.knee
-
             kmeans = KMeans(n_clusters=n_clusters, random_state=0).fit(embeddings)
+
+            report_str = 'Partner: {}, Language: {}\n'.format(partner, language)
+            report_str += '#######################################################\n'
 
             # how many points per cluster
             predictions = kmeans.predict(embeddings)
             distribution = Counter(predictions)
-            print(distribution.most_common(n_clusters))
+            distribution = distribution.most_common(n_clusters)
 
             # closest points to centers
             closest_embeddings_idx, _ = pairwise_distances_argmin_min(kmeans.cluster_centers_, embeddings)
             closest_sentences = [sentence_level_tips[partner][language][idx]['text'] for idx in closest_embeddings_idx]
 
-            print(closest_sentences)
-            print('################################################')
+            report_str += 'Clusters Statistics and Examples: \n\n'
+            for stat in distribution:
+                report_str += 'id: {}, #: {}\n'.format(stat[0], stat[1])
+                report_str += 'Example: {}\n'.format(closest_sentences[stat[0]])
+                report_str += '#######################################################\n'
+
+            with open("clustering_report_{}_{}.txt".format(partner, language), "w") as report_file:
+                report_file.write(report_str)
 
 
 if __name__ == "__main__":
