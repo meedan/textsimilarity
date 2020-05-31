@@ -314,9 +314,9 @@ def get_sentences(text, lang):
     return sentences
 
 
-if __name__ == "__main__":
+def cluster_tipline_requests():
+    global language
     partners, tips = load_covid_data()
-
     # breaking each tip into sentences
     sentence_level_tips = {}
     for partner in tips:
@@ -326,13 +326,13 @@ if __name__ == "__main__":
             for tip in tips[partner][language]:
                 sentences = get_sentences(tip['text'], language)
                 embeddings = get_sentence_embedding(sentences, language)
-                sentence_level_tips[partner][language] += [{'text': sentences[i], 'embedding': embeddings[i]} for i in range(len(sentences))]
-
+                sentence_level_tips[partner][language] += [{'text': sentences[i], 'embedding': embeddings[i]} for i in
+                                                           range(len(sentences))]
     # clustering sentences per partner per language
     for partner in sentence_level_tips:
         for language in sentence_level_tips[partner]:
             embeddings = [tip['embedding'] for tip in sentence_level_tips[partner][language]]
-            n_clusters = max(5, round(len(embeddings)*0.0015))
+            n_clusters = max(5, round(len(embeddings) * 0.0015))
             kmeans = KMeans(n_clusters=n_clusters, random_state=0).fit(embeddings)
 
             # how many points per cluster
@@ -343,7 +343,6 @@ if __name__ == "__main__":
             # closest points to centers
             closest_embeddings, _ = pairwise_distances_argmin_min(kmeans.cluster_centers_, embeddings)
             closest_sentences = []
-
             for closest_embedding in closest_embeddings:
                 for tip in sentence_level_tips[partner][language]:
                     if tip['embedding'] == closest_embedding:
@@ -351,3 +350,7 @@ if __name__ == "__main__":
                         break
             print(closest_sentences)
             print('################################################')
+
+
+if __name__ == "__main__":
+    cluster_tipline_requests()
