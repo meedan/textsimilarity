@@ -33,6 +33,12 @@ partner_languages = {
     'boom-factcheck': ['en', 'hi']
 }
 
+language_codes_translator = {
+    'pt': 'portuguese',
+    'en': 'english',
+    'hi': 'hindi'
+}
+
 
 def get_sentence_embedding(text, lang):
     if isinstance(text, list):
@@ -309,7 +315,8 @@ def generate_topic_modeling_report():
 
 
 def get_sentences(text, lang):
-    if lang == 'en':
+    if lang in ['en', 'pt']:
+        lang = language_codes_translator[lang]
         sentences = nltk.sent_tokenize(text, language=lang)
         sentences = [s for s in sentences if s and not s.isspace()]
         return sentences
