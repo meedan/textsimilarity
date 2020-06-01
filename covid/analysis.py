@@ -198,6 +198,7 @@ def load_covid_data():
         temp_tip_line_requests.append(item)
     tip_line_requests = temp_tip_line_requests
 
+    tip_line_requests = [tip for tip in tip_line_requests if tip['claim_type'] == 'Claim']
     for tip in tip_line_requests:
         tip['text'] = remove_emoji(tip['media_text'] if tip['media_text'] != 'NA' and len(tip['media_text']) >= len(tip['media_title']) else tip['media_title'])
         lang_data = cld3.get_language(tip['text'])
@@ -285,7 +286,6 @@ def extract_top_k_requests_per_topic(k, partner, language, tips):
 
 
 def generate_topic_modeling_report():
-    global language
     print('starting topic modeling...')
     partners, tip_line_requests = do_topic_modeling_per_partner()
     print('topic modeling done.')
@@ -298,6 +298,7 @@ def generate_topic_modeling_report():
             report_str = ''
 
             report_str += 'Partner: {}, Language: {}\n'.format(partner, language)
+            report_str += '##########################################\n'
 
             report_str = 'Top 5 Keywords Per Topic:\n'
             for topic in topics:
@@ -329,7 +330,6 @@ def get_sentences(text, lang):
 
 
 def cluster_tipline_requests():
-    global language
     partners, tips = load_covid_data()
     # breaking each tip into sentences
     sentence_level_tips = {}
@@ -339,6 +339,7 @@ def cluster_tipline_requests():
             sentence_level_tips[partner][language] = []
             for tip in tips[partner][language]:
                 sentences = get_sentences(tip['text'], language)
+                sentences = [s for s in sentences if len(s) > 10]
                 embeddings = get_sentence_embedding(sentences, language)
                 sentence_level_tips[partner][language] += [{'text': sentences[i], 'embedding': embeddings[i]} for i in
                                                            range(len(sentences))]
@@ -380,4 +381,5 @@ def cluster_tipline_requests():
 
 
 if __name__ == "__main__":
-    cluster_tipline_requests()
+    # cluster_tipline_requests()
+    generate_topic_modeling_report()
