@@ -349,13 +349,13 @@ def cluster_tipline_requests():
             embeddings = [tip['embedding'] for tip in sentence_level_tips[partner][language]]
 
             # finding the right number of clusters
-            # n_clusters = max(5, round(len(embeddings) * 0.0015))
-            kmeans_intertias = []
-            for i in range(5, 16):
-                kmeans = KMeans(n_clusters=i, random_state=0).fit(embeddings)
-                kmeans_intertias.append(kmeans.inertia_)
-            knee_locator = KneeLocator(range(5, 16), kmeans_intertias, curve='convex', direction='decreasing')
-            n_clusters = knee_locator.knee
+            n_clusters = max(5, min(round(len(embeddings) * 0.0015), 10))
+            # kmeans_intertias = []
+            # for i in range(5, 16):
+            #     kmeans = KMeans(n_clusters=i, random_state=0).fit(embeddings)
+            #     kmeans_intertias.append(kmeans.inertia_)
+            # knee_locator = KneeLocator(range(5, 16), kmeans_intertias, curve='convex', direction='decreasing')
+            # n_clusters = knee_locator.knee
             kmeans = KMeans(n_clusters=n_clusters, random_state=0).fit(embeddings)
 
             report_str = 'Partner: {}, Language: {}\n'.format(partner, language)
@@ -381,5 +381,5 @@ def cluster_tipline_requests():
 
 
 if __name__ == "__main__":
-    # cluster_tipline_requests()
-    generate_topic_modeling_report()
+    cluster_tipline_requests()
+    # generate_topic_modeling_report()
