@@ -20,13 +20,13 @@ def angdist(u, v):
 
 
 def cosine(u, v):
-    return distance.cosine(u, v)
+    return 1 - distance.cosine(u, v)
 
 
 def generate_performance_report_file(counts, filename):
-    report_str = 'laser,fuzzy,averae,min\n'
+    report_str = 'score,laser,fuzzy,average,min\n'
     for i in range(100):
-        report_str += '{},{},{},{},{}\n'.format(i, counts['laser'][i], counts['fuzzy'][i], counts['average'][i],
+        report_str += '{},{},{},{},{}\n'.format(i+1, counts['laser'][i], counts['fuzzy'][i], counts['average'][i],
                                                 counts['min'][i])
 
     with open("{}.csv".format(filename), "w") as report_file:
@@ -64,7 +64,7 @@ for pair in pairs:
     embeddings = get_sentence_embedding(pair, 'en')
     embedding_pairs.append((embeddings[0], embeddings[1]))
 
-laser_scores = [cosine(pair[0], pair[1]) * 100 for pair in embedding_pairs]
+laser_scores = [angdist(pair[0], pair[1]) * 100 for pair in embedding_pairs]
 fuzzy_scores = [fuzz.partial_ratio(pair[0], pair[1]) for pair in pairs]
 average_scores = [(laser_scores[i] + fuzzy_scores[i]) / 2 for i in range(len(pairs))]
 min_scores = [min(laser_scores[i], fuzzy_scores[i]) for i in range(len(pairs))]
