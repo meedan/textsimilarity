@@ -76,10 +76,10 @@ count = {
 }
 
 for i, label in enumerate(labels):
-    count[label]['laser'][round(laser_scores[i])] += 1
-    count[label]['fuzzy'][round(fuzzy_scores[i])] += 1
-    count[label]['average'][round(average_scores[i])] += 1
-    count[label]['min'][round(min_scores[i])] += 1
+    count[label]['laser'][int(round(laser_scores[i]))] += 1
+    count[label]['fuzzy'][int(round(fuzzy_scores[i]))] += 1
+    count[label]['average'][int(round(average_scores[i]))] += 1
+    count[label]['min'][int(round(min_scores[i]))] += 1
 
 generate_performance_report_file(count['Very similar'], 'very_similar')
 generate_performance_report_file(count['Somewhat similar'], 'somewhat_similar')
