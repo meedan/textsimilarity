@@ -34,13 +34,13 @@ def generate_performance_report_file(counts, filename):
 
 
 def load_test_data():
-    with open('data/claim_pairs/laser_sample.csv') as csvfile:
+    with open('../data/claim_pairs/laser_sample.csv') as csvfile:
         pairs = csv.reader(csvfile)
         pairs = [item for item in pairs]
     csv_headers = pairs[0]
     pairs = pairs[1:]
 
-    with open('data/claim_pairs/fuzzy_sample.csv') as csvfile:
+    with open('../data/claim_pairs/fuzzy_sample.csv') as csvfile:
         pairs_csv = csv.reader(csvfile)
         pairs += [item for item in pairs_csv][1:]
 
