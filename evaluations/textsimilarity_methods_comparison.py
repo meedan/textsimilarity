@@ -4,7 +4,6 @@ import math
 from fuzzywuzzy import fuzz
 from laserembeddings import Laser
 from scipy.spatial import distance
-from sklearn.metrics import confusion_matrix
 
 laser = Laser()
 
@@ -27,7 +26,8 @@ def cosine(u, v):
 def generate_performance_report_file(counts, filename):
     report_str = 'laser,fuzzy,averae,min\n'
     for i in range(100):
-        report_str += '{},{},{},{},{}\n'.format(i, counts['laser'][i], counts['fuzzy'][i], counts['average'][i], counts['min'][i])
+        report_str += '{},{},{},{},{}\n'.format(i, counts['laser'][i], counts['fuzzy'][i], counts['average'][i],
+                                                counts['min'][i])
 
     with open("{}.csv".format(filename), "w") as report_file:
         report_file.write(report_str)
@@ -76,10 +76,10 @@ count = {
 }
 
 for i, label in enumerate(labels):
-    count[label]['laser'][int(round(laser_scores[i]))] += 1
-    count[label]['fuzzy'][int(round(fuzzy_scores[i]))] += 1
-    count[label]['average'][int(round(average_scores[i]))] += 1
-    count[label]['min'][int(round(min_scores[i]))] += 1
+    count[label]['laser'][int(round(laser_scores[i])) - 1] += 1
+    count[label]['fuzzy'][int(round(fuzzy_scores[i])) - 1] += 1
+    count[label]['average'][int(round(average_scores[i])) - 1] += 1
+    count[label]['min'][int(round(min_scores[i])) - 1] += 1
 
 generate_performance_report_file(count['Very similar'], 'very_similar')
 generate_performance_report_file(count['Somewhat similar'], 'somewhat_similar')
