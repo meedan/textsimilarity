@@ -6,3 +6,5 @@ pycld3
 sklearn
 emoji
 kneed
+sentence-transformers
+fuzzywuzzy[speedup]
