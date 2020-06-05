@@ -67,7 +67,7 @@ for pair in pairs:
 laser_scores = [cosine(pair[0], pair[1]) * 100 for pair in embedding_pairs]
 fuzzy_scores = [fuzz.partial_ratio(pair[0], pair[1]) for pair in pairs]
 average_scores = [(laser_scores[i] + fuzzy_scores[i]) / 2 for i in range(len(pairs))]
-min_scores = [min(laser_scores[i] + fuzzy_scores[i]) for i in range(len(pairs))]
+min_scores = [min(laser_scores[i], fuzzy_scores[i]) for i in range(len(pairs))]
 
 count = {
     'Very similar': {'laser': [0] * 100, 'fuzzy': [0] * 100, 'average': [0] * 100, 'min': [0] * 100},
