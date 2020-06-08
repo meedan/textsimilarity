@@ -339,7 +339,7 @@ def cluster_tipline_requests():
             sentence_level_tips[partner][language] = []
             for tip in tips[partner][language]:
                 sentences = get_sentences(tip['text'], language)
-                sentences = [s for s in sentences if len(s) > 14]
+                sentences = [s for s in sentences if len(s) > 20]
                 if len(sentences) == 0:
                     continue
                 embeddings = get_sentence_embedding(sentences, language)
@@ -357,10 +357,7 @@ def cluster_tipline_requests():
                 kmeans_intertias.append(kmeans.inertia_)
             knee_locator = KneeLocator(range(5, 41), kmeans_intertias, curve='convex', direction='decreasing')
             n_clusters = knee_locator.knee
-            print(kmeans_intertias)
-            print('n_clusters: {}'.format(n_clusters))
-            print('###########################################')
-            n_clusters = max(5, min(round(len(embeddings) * 0.0015), 10))
+            # n_clusters = max(5, min(round(len(embeddings) * 0.0015), 10))
             kmeans = KMeans(n_clusters=n_clusters, random_state=0).fit(embeddings)
 
             report_str = 'Partner: {}, Language: {}\n'.format(partner, language)
