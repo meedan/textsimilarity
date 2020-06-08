@@ -352,10 +352,10 @@ def cluster_tipline_requests():
 
             # finding the right number of clusters
             kmeans_intertias = []
-            for i in range(5, 21):
+            for i in range(5, 41):
                 kmeans = KMeans(n_clusters=i, random_state=0).fit(embeddings)
                 kmeans_intertias.append(kmeans.inertia_)
-            knee_locator = KneeLocator(range(5, 21), kmeans_intertias, curve='convex', direction='decreasing')
+            knee_locator = KneeLocator(range(5, 41), kmeans_intertias, curve='convex', direction='decreasing')
             n_clusters = knee_locator.knee
             print(kmeans_intertias)
             print('n_clusters: {}'.format(n_clusters))
