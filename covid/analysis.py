@@ -339,7 +339,9 @@ def cluster_tipline_requests():
             sentence_level_tips[partner][language] = []
             for tip in tips[partner][language]:
                 sentences = get_sentences(tip['text'], language)
-                sentences = [s for s in sentences if len(s) > 20]
+                sentences = [s for s in sentences if len(s) > 14]
+                if len(sentences) == 0:
+                    continue
                 embeddings = get_sentence_embedding(sentences, language)
                 sentence_level_tips[partner][language] += [{'text': sentences[i], 'embedding': embeddings[i]} for i in
                                                            range(len(sentences))]
