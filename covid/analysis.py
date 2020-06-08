@@ -176,7 +176,7 @@ def remove_duplicate_requests(tips):
         if tip['pm_id'] in checked_pm_ids:
             continue
         for other_tip in tips:
-            if tip != other_tip and is_a_match(tip['embedding'], other_tip['embedding'], 0.75):
+            if tip != other_tip and is_a_match(tip['embedding'], other_tip['embedding'], 0.85):
                 other_tip['pm_id'] = tip['pm_id']
                 checked_pm_ids.add(tip['pm_id'])
 
@@ -339,7 +339,7 @@ def cluster_tipline_requests():
             sentence_level_tips[partner][language] = []
             for tip in tips[partner][language]:
                 sentences = get_sentences(tip['text'], language)
-                sentences = [s for s in sentences if len(s) > 10]
+                sentences = [s for s in sentences if len(s) > 20]
                 embeddings = get_sentence_embedding(sentences, language)
                 sentence_level_tips[partner][language] += [{'text': sentences[i], 'embedding': embeddings[i]} for i in
                                                            range(len(sentences))]
@@ -349,13 +349,16 @@ def cluster_tipline_requests():
             embeddings = [tip['embedding'] for tip in sentence_level_tips[partner][language]]
 
             # finding the right number of clusters
+            kmeans_intertias = []
+            for i in range(5, 21):
+                kmeans = KMeans(n_clusters=i, random_state=0).fit(embeddings)
+                kmeans_intertias.append(kmeans.inertia_)
+            knee_locator = KneeLocator(range(5, 16), kmeans_intertias, curve='convex', direction='decreasing')
+            n_clusters = knee_locator.knee
+            print(kmeans_intertias)
+            print('n_clusters: {}'.format(n_clusters))
+            print('###########################################')
             n_clusters = max(5, min(round(len(embeddings) * 0.0015), 10))
-            # kmeans_intertias = []
-            # for i in range(5, 16):
-            #     kmeans = KMeans(n_clusters=i, random_state=0).fit(embeddings)
-            #     kmeans_intertias.append(kmeans.inertia_)
-            # knee_locator = KneeLocator(range(5, 16), kmeans_intertias, curve='convex', direction='decreasing')
-            # n_clusters = knee_locator.knee
             kmeans = KMeans(n_clusters=n_clusters, random_state=0).fit(embeddings)
 
             report_str = 'Partner: {}, Language: {}\n'.format(partner, language)
