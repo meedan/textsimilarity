@@ -19,6 +19,7 @@ class HindiNLIDataReader(object):
             sentence1 = item['context']
             sentence2 = item['hypothesis']
             label = item['entailment']
+            print(label)
             examples.append(InputExample(guid=guid, texts=[sentence1, sentence2], label=self.map_label(label)))
 
         return examples
