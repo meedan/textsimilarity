@@ -8,6 +8,7 @@ class HindiNLIDataReader(object):
     """
     def get_examples(self):
         bhaav = pd.read_csv("../data/recasted-hindi-nli-data/bhaav/bhaav_recasted.tsv", sep="\t")
+        bhaav = bhaav.dropna(subset=['entailment'])
         mr = pd.read_csv("../data/recasted-hindi-nli-data/MR/recasted_movie_review_data.tsv", sep="\t")
         pr = pd.read_csv("../data/recasted-hindi-nli-data/PR/recasted_product_review_data.tsv", sep="\t")
 
@@ -19,14 +20,13 @@ class HindiNLIDataReader(object):
             sentence1 = item['context']
             sentence2 = item['hypothesis']
             label = item['entailment']
-            print(label)
             examples.append(InputExample(guid=guid, texts=[sentence1, sentence2], label=self.map_label(label)))
 
         return examples
 
     @staticmethod
     def get_labels():
-        return {"not-entailed": 0, "entailed": 1}
+        return {"not-entailed": 0, "not entailed": 0, "entailed": 1}
 
     def get_num_labels(self):
         return len(self.get_labels())
