@@ -37,7 +37,7 @@ pooling_model = models.Pooling(word_embedding_model.get_word_embedding_dimension
 model = SentenceTransformer(modules=[word_embedding_model, pooling_model])
 
 # Convert the dataset to a DataLoader ready for training
-logging.info("Read XNLI train dataset")
+logging.info("Read Hindi NLI train dataset")
 train_data = SentencesDataset(hindi_nli_reader.get_examples(language='hi'), model=model)
 train_dataloader = DataLoader(train_data, shuffle=True, batch_size=batch_size)
 train_loss = losses.SoftmaxLoss(model=model, sentence_embedding_dimension=model.get_sentence_embedding_dimension(),
