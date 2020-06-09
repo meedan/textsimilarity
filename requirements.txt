@@ -8,3 +8,4 @@ emoji
 kneed
 sentence-transformers
 fuzzywuzzy[speedup]
+pandas

@@ -7,11 +7,11 @@ class XNLIDataReader(object):
     Reads in the XNLI dataset
     """
     def get_examples(self, language):
-        with open('data/xnli/xnli.dev.jsonl', 'r') as json_file:
+        with open('../data/xnli/xnli.dev.jsonl', 'r') as json_file:
             json_list = list(json_file)
             xnli_data = [json.loads(line) for line in json_list]
 
-        with open('data/xnli/xnli.test.jsonl', 'r') as json_file:
+        with open('../data/xnli/xnli.test.jsonl', 'r') as json_file:
             json_list = list(json_file)
             xnli_data += [json.loads(line) for line in json_list]
 

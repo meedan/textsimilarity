@@ -6,9 +6,13 @@ class ClaimPairDataReader(object):
     """
     Reads in the XNLI dataset
     """
-    def get_examples(self, language=None):
+    def get_examples(self, split='train'):
         hindi_pairs = self._load_data()
-
+        split_point = int(round(len(hindi_pairs)*0.8))
+        if split == 'train':
+            hindi_pairs = hindi_pairs[:split_point]
+        else:
+            hindi_pairs = hindi_pairs[split_point:]
         examples = []
         for i, item in enumerate(hindi_pairs):
             guid = i

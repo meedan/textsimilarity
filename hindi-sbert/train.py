@@ -5,7 +5,7 @@ from sentence_transformers import SentencesDataset, LoggingHandler, SentenceTran
 from sentence_transformers import models, losses
 from sentence_transformers.evaluation import EmbeddingSimilarityEvaluator
 from torch.utils.data import DataLoader
-from xnli_data_reader import XNLIDataReader
+from hindi_nli_data_reader import HindiNLIDataReader
 from claim_pair_data_reader import ClaimPairDataReader
 
 #### Just some code to print debug information to stdout
@@ -21,8 +21,8 @@ model_name = 'xlm-roberta-base'
 # Read the dataset
 batch_size = 16
 model_save_path = 'models/hindi-sxlmr'
-xnli_reader = XNLIDataReader()
-train_num_labels = xnli_reader.get_num_labels()
+hindi_nli_reader = HindiNLIDataReader()
+train_num_labels = hindi_nli_reader.get_num_labels()
 claim_pair_reader = ClaimPairDataReader()
 
 # Use Huggingface/transformers model (like BERT, RoBERTa, XLNet, XLM-R) for mapping tokens to embeddings
@@ -38,13 +38,13 @@ model = SentenceTransformer(modules=[word_embedding_model, pooling_model])
 
 # Convert the dataset to a DataLoader ready for training
 logging.info("Read XNLI train dataset")
-train_data = SentencesDataset(xnli_reader.get_examples(language='hi'), model=model)
+train_data = SentencesDataset(hindi_nli_reader.get_examples(language='hi'), model=model)
 train_dataloader = DataLoader(train_data, shuffle=True, batch_size=batch_size)
 train_loss = losses.SoftmaxLoss(model=model, sentence_embedding_dimension=model.get_sentence_embedding_dimension(),
                                 num_labels=train_num_labels)
 
 logging.info("Read Claim Pair dev dataset")
-dev_data = SentencesDataset(examples=claim_pair_reader.get_examples(), model=model)
+dev_data = SentencesDataset(examples=claim_pair_reader.get_examples('train'), model=model)
 dev_dataloader = DataLoader(dev_data, shuffle=False, batch_size=batch_size)
 evaluator = EmbeddingSimilarityEvaluator(dev_dataloader)
 
@@ -62,3 +62,16 @@ model.fit(train_objectives=[(train_dataloader, train_loss)],
           warmup_steps=warmup_steps,
           output_path=model_save_path
           )
+
+##############################################################################
+#
+# Load the stored model and evaluate its performance on STS benchmark dataset
+#
+##############################################################################
+
+model = SentenceTransformer(model_save_path)
+test_data = SentencesDataset(examples=claim_pair_reader.get_examples("test"), model=model)
+test_dataloader = DataLoader(test_data, shuffle=False, batch_size=batch_size)
+evaluator = EmbeddingSimilarityEvaluator(test_dataloader)
+
+model.evaluate(evaluator)
