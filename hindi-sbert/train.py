@@ -38,13 +38,13 @@ model = SentenceTransformer(modules=[word_embedding_model, pooling_model])
 
 # Convert the dataset to a DataLoader ready for training
 logging.info("Read Hindi NLI train dataset")
-train_data = SentencesDataset(hindi_nli_reader.get_examples(language='hi'), model=model)
+train_data = SentencesDataset(hindi_nli_reader.get_examples(), model=model)
 train_dataloader = DataLoader(train_data, shuffle=True, batch_size=batch_size)
 train_loss = losses.SoftmaxLoss(model=model, sentence_embedding_dimension=model.get_sentence_embedding_dimension(),
                                 num_labels=train_num_labels)
 
 logging.info("Read Claim Pair dev dataset")
-dev_data = SentencesDataset(examples=claim_pair_reader.get_examples('train'), model=model)
+dev_data = SentencesDataset(examples=claim_pair_reader.get_examples(split='train'), model=model)
 dev_dataloader = DataLoader(dev_data, shuffle=False, batch_size=batch_size)
 evaluator = EmbeddingSimilarityEvaluator(dev_dataloader)
 
@@ -70,7 +70,7 @@ model.fit(train_objectives=[(train_dataloader, train_loss)],
 ##############################################################################
 
 model = SentenceTransformer(model_save_path)
-test_data = SentencesDataset(examples=claim_pair_reader.get_examples("test"), model=model)
+test_data = SentencesDataset(examples=claim_pair_reader.get_examples(split="test"), model=model)
 test_dataloader = DataLoader(test_data, shuffle=False, batch_size=batch_size)
 evaluator = EmbeddingSimilarityEvaluator(test_dataloader)
 
