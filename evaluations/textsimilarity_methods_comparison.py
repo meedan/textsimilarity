@@ -1,4 +1,5 @@
 import csv
+import json
 import math
 
 from fuzzywuzzy import fuzz
@@ -44,15 +45,31 @@ def generate_performance_report_file(counts, filename):
 
 
 def generate_methods_report_files(pairs, filename):
-    report_str = 'LookUp Item,Returned Item,LookUp Item Char Len,LookUp Item Word Len,FuzzyWuzzy Score,LASER Score,SBERT Score,Label\n'
+    # report_str = 'LookUp Item,Returned Item,LookUp Item Char Len,LookUp Item Word Len,FuzzyWuzzy Score,LASER Score,SBERT Score,Label\n'
+    # for pair in pairs:
+    #     report_str += '{},{},{},{},{},{},{},{}\n'.format(pair['Database-Stored Sentence'], pair['Top Yielded Sentence'],
+    #                                                      pair['LookUp Item Char Len'], pair['LookUp Item Word Len'],
+    #                                                      pair['FuzzyWuzzy Score'], pair['LASER Score'],
+    #                                                      pair['SBERT Score'], pair['Match class'])
+    #
+    # with open("{}.csv".format(filename), "w") as report_file:
+    #     report_file.write(report_str)
+    new_pairs = []
     for pair in pairs:
-        report_str += '{},{},{},{},{},{},{},{}\n'.format(pair['Database-Stored Sentence'], pair['Top Yielded Sentence'],
-                                                         pair['LookUp Item Char Len'], pair['LookUp Item Word Len'],
-                                                         pair['FuzzyWuzzy Score'], pair['LASER Score'],
-                                                         pair['SBERT Score'], pair['Match class'])
+        new_pair = {
+            'LookUp Item': pair['Database-Stored Sentence'],
+            'Returned Item': pair['Top Yielded Sentence'],
+            'LookUp Item Char Len': pair['LookUp Item Char Len'],
+            'LookUp Item Word Len': pair['LookUp Item Word Len'],
+            'FuzzyWuzzy Score': pair['FuzzyWuzzy Score'],
+            'LASER Score': pair['LASER Score'],
+            'SBERT Score': pair['SBERT Score'],
+            'Label': pair['Match class']
+        }
+        new_pairs.append(new_pair)
 
-    with open("{}.csv".format(filename), "w") as report_file:
-        report_file.write(report_str)
+    with open('{}.json'.format(filename), 'w') as fp:
+        json.dump(new_pairs, fp)
 
 
 def load_test_data():
