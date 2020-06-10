@@ -1,1 +1,5 @@
 evaluations/.ipynb_checkpoints/*
+*~
+*__pycache__*_
+*.p
+
