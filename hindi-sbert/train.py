@@ -70,7 +70,7 @@ model.fit(train_objectives=[(train_dataloader, train_loss)],
 ##############################################################################
 
 model = SentenceTransformer(model_save_path)
-test_data = SentencesDataset(examples=claim_pair_reader.get_examples(split="test"), model=model)
+test_data = SentencesDataset(examples=claim_pair_reader.get_examples(split="train"), model=model)
 test_dataloader = DataLoader(test_data, shuffle=False, batch_size=batch_size)
 evaluator = EmbeddingSimilarityEvaluator(test_dataloader)
 

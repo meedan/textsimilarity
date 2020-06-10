@@ -29,7 +29,7 @@ class HindiNLIDataReader(object):
         return {"not-entailed": 0, "not entailed": 0, "entailed": 1}
 
     def get_num_labels(self):
-        return len(self.get_labels())
+        return 2
 
     def map_label(self, label):
         return self.get_labels()[label.strip().lower()]
