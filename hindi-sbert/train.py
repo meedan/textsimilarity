@@ -24,7 +24,7 @@ batch_size = 16
 model_save_path = 'models/hindi-sxlmr-xnli'
 hindi_nli_reader = HindiNLIDataReader()
 xnli_reader = XNLIDataReader()
-train_num_labels = XNLIDataReader.get_num_labels()
+train_num_labels = xnli_reader.get_num_labels()
 claim_pair_reader = ClaimPairDataReader()
 
 # Use Huggingface/transformers model (like BERT, RoBERTa, XLNet, XLM-R) for mapping tokens to embeddings
