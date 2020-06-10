@@ -6,6 +6,7 @@ from sentence_transformers import models, losses
 from sentence_transformers.evaluation import EmbeddingSimilarityEvaluator
 from torch.utils.data import DataLoader
 from hindi_nli_data_reader import HindiNLIDataReader
+from xnli_data_reader import XNLIDataReader
 from claim_pair_data_reader import ClaimPairDataReader
 
 #### Just some code to print debug information to stdout
@@ -20,9 +21,10 @@ model_name = 'xlm-roberta-base'
 
 # Read the dataset
 batch_size = 16
-model_save_path = 'models/hindi-sxlmr'
+model_save_path = 'models/hindi-sxlmr-xnli'
 hindi_nli_reader = HindiNLIDataReader()
-train_num_labels = hindi_nli_reader.get_num_labels()
+xnli_reader = XNLIDataReader()
+train_num_labels = XNLIDataReader.get_num_labels()
 claim_pair_reader = ClaimPairDataReader()
 
 # Use Huggingface/transformers model (like BERT, RoBERTa, XLNet, XLM-R) for mapping tokens to embeddings
@@ -38,7 +40,7 @@ model = SentenceTransformer(modules=[word_embedding_model, pooling_model])
 
 # Convert the dataset to a DataLoader ready for training
 logging.info("Read Hindi NLI train dataset")
-train_data = SentencesDataset(hindi_nli_reader.get_examples(), model=model)
+train_data = SentencesDataset(xnli_reader.get_examples(language='hi'), model=model)
 train_dataloader = DataLoader(train_data, shuffle=True, batch_size=batch_size)
 train_loss = losses.SoftmaxLoss(model=model, sentence_embedding_dimension=model.get_sentence_embedding_dimension(),
                                 num_labels=train_num_labels)
@@ -49,7 +51,7 @@ dev_dataloader = DataLoader(dev_data, shuffle=False, batch_size=batch_size)
 evaluator = EmbeddingSimilarityEvaluator(dev_dataloader)
 
 # Configure the training
-num_epochs = 1
+num_epochs = 5
 
 warmup_steps = math.ceil(len(train_dataloader) * num_epochs / batch_size * 0.1)  # 10% of train data for warm-up
 logging.info("Warmup-steps: {}".format(warmup_steps))
