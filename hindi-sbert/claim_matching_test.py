@@ -61,8 +61,8 @@ def main():
         tn, fp, fn, tp = confusion_matrix(labels, sbert_predictions).ravel()
         sbert_results.append([tn, fp, fn, tp])
     print('threshold,laser_tn,laser_fp,laser_fn,laser_tp,sbert_tn,sbert_fp,sbert_fn,sbert_tp')
-    for i in range(1, 101):
-        print('{},{},{},{},{},{},{},{},{}'.format(i, laser_results[i][0], laser_results[i][1], laser_results[i][2],
+    for i in range(0, 100):
+        print('{},{},{},{},{},{},{},{},{}'.format(i+1, laser_results[i][0], laser_results[i][1], laser_results[i][2],
                                                   laser_results[i][3], sbert_results[i][0], sbert_results[i][1],
                                                   sbert_results[i][2], sbert_results[i][3]))
 
