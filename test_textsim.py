@@ -334,7 +334,7 @@ if __name__ == "__main__":
 		print("==={}".format(model))
 		# Word mean + cosine
 		print("Word vector means and cosine (current approach)...")
-		stopwords_path = './data/stopwords-en.txt'
+		stopwords_path = 'data/stopwords-en_2.txt'
 		with open(stopwords_path, 'r') as fh:
 			stopwords = fh.read().split(',')
 		results=run_mean_word_cos(SAME,DIFF,stopwords,models[model])
@@ -343,7 +343,7 @@ if __name__ == "__main__":
 
 		# Word mean + angdist
 		print("Word vector means and angular similarity...")
-		stopwords_path = './data/stopwords-en.txt'
+		stopwords_path = 'data/stopwords-en_2.txt'
 		with open(stopwords_path, 'r') as fh:
 			stopwords = fh.read().split(',')
 		results=run_mean_word_angdist(SAME,DIFF,stopwords,models[model])
@@ -351,7 +351,7 @@ if __name__ == "__main__":
 		print(score(results[0],results[1]))		
 		
 		print("Word vector means and sqrt dist...")
-		stopwords_path = './data/stopwords-en.txt'
+		stopwords_path = 'data/stopwords-en_2.txt'
 		with open(stopwords_path, 'r') as fh:
 			stopwords = fh.read().split(',')
 		results=run_mean_word_sqrtdist(SAME,DIFF,stopwords,models[model])

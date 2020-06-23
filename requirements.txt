@@ -1,0 +1,11 @@
+spacy
+gensim
+nltk
+laserembeddings[en, hi, pt]
+pycld3
+sklearn
+emoji
+kneed
+sentence-transformers
+fuzzywuzzy[speedup]
+pandas
