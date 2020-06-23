@@ -2,6 +2,7 @@ import json
 import requests
 import csv
 import random
+import copy
 from collections import Counter
 import numpy as np
 import requests
@@ -23,10 +24,11 @@ class AlegreClient:
   def text_similarity_path():
     return "/text/similarity/"
 
-  def __init__(self, hostname=None):
+  def __init__(self, use_fuzzy=False, hostname=None):
     if not hostname:
       hostname = AlegreClient.default_hostname()
     self.hostname = hostname
+    self.use_fuzzy = use_fuzzy
 
   def input_cases(self, texts, model_name, context={}, language=None):
     for text in texts:
@@ -35,8 +37,18 @@ class AlegreClient:
         request_params["context"] = context
       if language:
         request_params["language"] = language
+      if self.use_fuzzy:
+        request_params["fuzzy"] = "auto"
       self.store_text_similarity(request_params)
 
+  def get_voted_content(self, filename="data/voted_content.csv"):
+    with open(filename) as f:
+      reader = csv.reader(f)
+      dataset = []
+      for row in reader:
+        dataset.append({"vote": row[1], "database_text": row[3], "lookup_text": row[4], "id": row[0]})
+    return dataset[1:]
+      
   def transform_india_today_data(self, filename="data/indiatoday_texts.csv"):
     with open(filename) as f:
       reader = csv.reader(f)
@@ -156,17 +168,20 @@ class AlegreClient:
       results["resultset"].append({"fact_pair": fact_pair, "response": result, "is_omitted": is_omitted})
     return results
 
-  def evaluate_model_iteratively(self, dataset, model_name, task_name="iterative_model_evaluation", language=None):
+  def evaluate_model_iteratively(self, dataset, model_name, score_type, task_name="iterative_model_evaluation", language="en"):
+    # import code;code.interact(local=dict(globals(), **locals()))
     context = {"task": task_name, "model_name": model_name}
     results = {"count": 0, "success": 0, "server_errors": 0, "resultset": []}
-    for row in dataset:
+    i = 0
+    for row in dataset[:1000]:
       results["count"] += 1
       result = json.loads(self.get_similar_texts({
         "model": model_name,
         "text": row["lookup_text"],
         "context": context,
         "threshold": 0.0,
-        "language": language
+        "language": language,
+        "score_type": score_type,
       }).text)
       result["count_at_time"] = results["count"]
       self.input_cases(
@@ -176,7 +191,62 @@ class AlegreClient:
         language
       )
       results["resultset"].append({"fact_pair": row, "response": result, "is_omitted": False})
+      i += 1
+      if i % 50 == 0:
+        res = self.interpret_report(results)
+        with open('results_laser_fuzzy.csv', 'w', newline='') as f:
+          writer = csv.writer(f)
+          writer.writerows(res[0])
     return results
+
+  def run_annotated_test(self):
+      import code;code.interact(local=dict(globals(), **locals()))
+      context = {"task": "vote_test", "model_name": "laser"}
+      dataset = self.get_voted_content()
+      self.input_cases(
+        set([f["database_text"] for f in dataset]),
+        "laser",
+        context,
+        "en"
+      )
+      outrows = []
+      i_set = []
+      j = 0
+      for row in dataset:
+          for score_type in ["fuzzy", "mixed", "angular"]:
+              j += 1
+              if j not in i_set:
+                  try:
+                      response = json.loads(self.get_similar_texts({
+                        "model": "laser",
+                        "text": row["lookup_text"],
+                        "context": context,
+                        "threshold": 0.0,
+                        "language": "en",
+                        "score_type": score_type,
+                      }).text)
+                  except:
+                      response = {"result": []}
+                      time.sleep(3)
+                  for i,e in enumerate(response["result"]):
+                      outrow = copy.deepcopy(row)
+                      if e["_source"]["content"] == row["database_text"]:
+                          outrow[score_type+"_in_results"] = True
+                          outrow[score_type+"_score_in_results"] = e["_score"]
+                          outrow[score_type+"_result_depth"] = i
+                      else:
+                          outrow["vote"] = None
+                          outrow[score_type+"_in_results"] = True
+                          outrow[score_type+"_score_in_results"] = e["_score"]
+                          outrow[score_type+"_result_depth"] = i
+                      outrow["database_text"] = e["_source"]["content"]
+                      outrows.append(outrow)
+                      i_set.append(j)
+    #keys = set([e for i in [e.keys() for e in outrows] for e in i])
+    #with open('outrows.csv', 'w', newline='') as f:
+    #  writer = csv.writer(f)
+    #  writer.writerows([list(keys)])
+    #  writer.writerows([[e.get(k) for k in keys] for e in outrows])
       
   def store_text_similarity(self, request_params):
     return requests.post(self.hostname+self.text_similarity_path(), json=request_params)
@@ -214,11 +284,11 @@ class AlegreClient:
   def run_ciper_missing_test_no_truncation(self, model_name):
     return self.evaluate_model(self.transform_ciper_data(False), model_name, [], True, True)
 
-  def run_india_today_iterative_test(self, model_name):
-    return self.evaluate_model_iteratively(self.transform_india_today_data(), model_name)
+  def run_india_today_iterative_test(self, model_name, score_type="mixed"):
+    return self.evaluate_model_iteratively(self.transform_india_today_data(), model_name, score_type)
 
-  def run_india_today_hindi_iterative_test(self, model_name):
-    return self.evaluate_model_iteratively(self.transform_india_today_data("data/indiatoday_texts_hindi.csv"), model_name)
+  def run_india_today_hindi_iterative_test(self, model_name, score_type="mixed"):
+    return self.evaluate_model_iteratively(self.transform_india_today_data("data/indiatoday_texts_hindi.csv"), model_name, score_type, "iterative_model_evaluation", "hi")
 
   def run_hindi_headlines_test(self, model_name):
     return self.evaluate_model(self.transform_hindi_headlines_data(), model_name, [], True, False)
@@ -278,17 +348,18 @@ class AlegreClient:
       }
 
   def run_multi_test(self, model_name="elasticsearch", use_language_analyzer=True):
+    count = 400
     if use_language_analyzer:
       return {
-        "hindi_headlines": self.evaluate_model(random.sample(self.transform_hindi_headlines_data(), 400), model_name, [], True, True, "hindi_headlines", "hi"),
-        "ciper": self.evaluate_model(random.sample(self.transform_ciper_data(), 400), model_name, [], True, True, "ciper", "es"),
-        "fact_pairs": self.evaluate_model(random.sample(self.fact_pairs_from_csv(), 400), model_name, [], True, True, "fact_pairs", "en"),
+        "hindi_headlines": self.evaluate_model(random.sample(self.transform_hindi_headlines_data(), count), model_name, [], True, True, "hindi_headlines", "hi"),
+        "ciper": self.evaluate_model(random.sample(self.transform_ciper_data(), count), model_name, [], True, True, "ciper", "es"),
+        "fact_pairs": self.evaluate_model(random.sample(self.fact_pairs_from_csv(), count), model_name, [], True, True, "fact_pairs", "en"),
       }
     else:
       return {
-        "hindi_headlines": self.evaluate_model(random.sample(self.transform_hindi_headlines_data(), 400), model_name, [], True, True, "hindi_headlines", ""),
-        "ciper": self.evaluate_model(random.sample(self.transform_ciper_data(), 400), model_name, [], True, True, "ciper", ""),
-        "fact_pairs": self.evaluate_model(random.sample(self.fact_pairs_from_csv(), 400), model_name, [], True, True, "fact_pairs", ""),
+        "hindi_headlines": self.evaluate_model(random.sample(self.transform_hindi_headlines_data(), count), model_name, [], True, True, "hindi_headlines", ""),
+        "ciper": self.evaluate_model(random.sample(self.transform_ciper_data(), count), model_name, [], True, True, "ciper", ""),
+        "fact_pairs": self.evaluate_model(random.sample(self.fact_pairs_from_csv(), count), model_name, [], True, True, "fact_pairs", ""),
       }
 
   def interpret_report(self, report):
@@ -401,15 +472,22 @@ class AlegreClient:
       writer = csv.writer(f)
       writer.writerows(rows)
     return rows
-      
+  
 
 if __name__ == '__main__':
   import csv
   from alegre_client import AlegreClient
   ac = AlegreClient()
-  report = ac.generate_multilingual_datasets()
+  ac.run_annotated_test()
+  #report = ac.run_india_today_iterative_test('laser', "fuzzy")
+  #res = ac.interpret_report(report)
+  with open('results_laser_fuzzy.csv', 'w', newline='') as f:
+    writer = csv.writer(f)
+    writer.writerows(res[0])
+  # report = ac.generate_multilingual_datasets()
   # f = open("multilingual_sentence_matched_datasets.json", "w")
   # f.write(json.dumps(report))
   # f.close()
-  # report = ac.run_multi_test("elasticsearch", True)
+  report = ac.run_multi_test("elasticsearch", True)
+  
   cuts = ac.accuracy_report_to_table(ac.evaluate_cut_points(report))
