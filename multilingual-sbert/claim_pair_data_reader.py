@@ -6,15 +6,21 @@ class ClaimPairDataReader(object):
     """
     Reads in the XNLI dataset
     """
-    def get_examples(self, split='train'):
-        hindi_pairs = self._load_data()
-        split_point = int(round(len(hindi_pairs)*0.8))
-        if split == 'train':
-            hindi_pairs = hindi_pairs[:split_point]
+    def get_examples(self, language, split='train'):
+        pairs = self._load_data()
+        if language == 'hi':
+            pairs = pairs['hindi_headlines']
+        elif language == 'pt':
+            pairs = pairs['ciper']
         else:
-            hindi_pairs = hindi_pairs[split_point:]
+            pairs = pairs['fact_pairs']
+        split_point = int(round(len(pairs)*0.8))
+        if split == 'train':
+            pairs = pairs[:split_point]
+        else:
+            pairs = pairs[split_point:]
         examples = []
-        for i, item in enumerate(hindi_pairs):
+        for i, item in enumerate(pairs):
             guid = i
             sentence1 = item['lookup_text']
             sentence2 = item['database_text']
@@ -33,4 +39,4 @@ class ClaimPairDataReader(object):
     def _load_data(self):
         with open('../data/multilingual_sentence_matched_datasets.json') as f:
             sentence_pairs = json.load(f)
-        return sentence_pairs['hindi_headlines']
+        return sentence_pairs

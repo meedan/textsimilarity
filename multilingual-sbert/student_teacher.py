@@ -17,8 +17,10 @@ train_batch_size = 48
 logging.info("Load teacher model")
 teacher_model = SentenceTransformer('bert-base-nli-stsb-mean-tokens')
 
+# logging.info("Create student model from scratch")
+# word_embedding_model = models.Transformer("xlm-roberta-base")
 logging.info("Create student model from scratch")
-word_embedding_model = models.Transformer("xlm-roberta-base")
+word_embedding_model = SentenceTransformer('models/hindi-sxlmr-stmodel')
 
 # Apply mean pooling to get one fixed sized sentence vector
 pooling_model = models.Pooling(word_embedding_model.get_word_embedding_dimension(),
@@ -28,12 +30,12 @@ pooling_model = models.Pooling(word_embedding_model.get_word_embedding_dimension
 
 model = SentenceTransformer(modules=[word_embedding_model, pooling_model])
 
-output_path = 'models/hindi-sxlmr-stmodel'
+output_path = 'models/multilingual-sbert'
 
 logging.info("Create dataset reader")
 
 ###### Read Dataset ######
-train_file_path = 'english_hindi_parallel_train.txt'
+train_file_path = 'english_portuguese_parallel_train.txt'
 train_data = ParallelSentencesDataset(student_model=model, teacher_model=teacher_model)
 train_data.load_data(train_file_path)
 
@@ -43,18 +45,18 @@ train_loss = losses.MSELoss(model=model)
 ###### Load dev sets ######
 
 # Test on STS 2017.en-de dataset using Spearman rank correlation
-logging.info("Read Hindi headline-pairs dataset")
+logging.info("Read Portuguese headline-pairs dataset")
 evaluators = []
 claim_pair_reader = ClaimPairDataReader()
-dev_data = SentencesDataset(examples=claim_pair_reader.get_examples(split='train'), model=model)
+dev_data = SentencesDataset(examples=claim_pair_reader.get_examples(split='train', language='pt'), model=model)
 dev_dataloader = DataLoader(dev_data, shuffle=False, batch_size=train_batch_size)
-evaluator_sts = evaluation.EmbeddingSimilarityEvaluator(dev_dataloader, name='Hindi Headlines')
+evaluator_sts = evaluation.EmbeddingSimilarityEvaluator(dev_dataloader, name='Portuguese Headlines')
 evaluators.append(evaluator_sts)
 
 # Train the model
 model.fit(train_objectives=[(train_dataloader, train_loss)],
           evaluator=evaluation.SequentialEvaluator(evaluators, main_score_function=lambda scores: scores[-1]),
-          epochs=20,
+          epochs=1,
           evaluation_steps=1000,
           warmup_steps=10000,
           scheduler='warmupconstant',

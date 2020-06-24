@@ -46,7 +46,7 @@ train_loss = losses.SoftmaxLoss(model=model, sentence_embedding_dimension=model.
                                 num_labels=train_num_labels)
 
 logging.info("Read Claim Pair dev dataset")
-dev_data = SentencesDataset(examples=claim_pair_reader.get_examples(split='train'), model=model)
+dev_data = SentencesDataset(examples=claim_pair_reader.get_examples(split='train', language='hi'), model=model)
 dev_dataloader = DataLoader(dev_data, shuffle=False, batch_size=batch_size)
 evaluator = EmbeddingSimilarityEvaluator(dev_dataloader)
 
@@ -72,7 +72,7 @@ model.fit(train_objectives=[(train_dataloader, train_loss)],
 ##############################################################################
 
 model = SentenceTransformer(model_save_path)
-test_data = SentencesDataset(examples=claim_pair_reader.get_examples(split="train"), model=model)
+test_data = SentencesDataset(examples=claim_pair_reader.get_examples(split="train", language='hi'), model=model)
 test_dataloader = DataLoader(test_data, shuffle=False, batch_size=batch_size)
 evaluator = EmbeddingSimilarityEvaluator(test_dataloader)
 
