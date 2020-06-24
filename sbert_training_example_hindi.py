@@ -93,7 +93,7 @@ for train_file in train_files:
 train_dataloader = DataLoader(train_data, shuffle=True, batch_size=train_batch_size)
 train_loss = losses.MSELoss(model=model)
 
-The below all apply to the de example - how does one evaluate the model outside this single example???
+# The below all apply to the de example - how does one evaluate the model outside this single example???
 ###### Load dev sets ######
 
 # Test on STS 2017.en-de dataset using Spearman rank correlation
