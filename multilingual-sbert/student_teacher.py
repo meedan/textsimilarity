@@ -19,16 +19,16 @@ teacher_model = SentenceTransformer('bert-base-nli-stsb-mean-tokens')
 
 # logging.info("Create student model from scratch")
 # word_embedding_model = models.Transformer("xlm-roberta-base")
-logging.info("Create student model from scratch")
-word_embedding_model = models.Transformer('models/hindi-sxlmr-stmodel')
 
 # Apply mean pooling to get one fixed sized sentence vector
-pooling_model = models.Pooling(word_embedding_model.get_word_embedding_dimension(),
-                               pooling_mode_mean_tokens=True,
-                               pooling_mode_cls_token=False,
-                               pooling_mode_max_tokens=False)
+# pooling_model = models.Pooling(word_embedding_model.get_word_embedding_dimension(),
+#                                pooling_mode_mean_tokens=True,
+#                                pooling_mode_cls_token=False,
+#                                pooling_mode_max_tokens=False)
 
-model = SentenceTransformer(modules=[word_embedding_model, pooling_model])
+# model = SentenceTransformer(modules=[word_embedding_model, pooling_model])
+logging.info("Loading previously trained student-teacher model")
+model = SentenceTransformer('models/hindi-sxlmr-stmodel')
 
 output_path = 'models/multilingual-sbert'
 
