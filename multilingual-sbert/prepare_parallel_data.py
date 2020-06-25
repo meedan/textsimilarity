@@ -105,6 +105,24 @@ def create_english_portuguese_parallel_corpus():
     join_parallel_text(train_input_paths, first_language, second_language, 'english_portuguese_parallel_train.txt')
 
 
+def create_english_bengali_parallel_corpus():
+    first_language = 'english'
+    second_language = 'bengali'
+    portuguese_parallel_corpus_path = '../data/english_bengali_parallel_data/'
+
+    train_file_names = get_files_in_directory(portuguese_parallel_corpus_path)
+    train_file_names = sorted(train_file_names)
+    train_input_paths = []
+    for i in range(len(train_file_names)//2):
+        train_input_paths.append({
+            first_language: portuguese_parallel_corpus_path + train_file_names[2*i + 1],
+            second_language: portuguese_parallel_corpus_path + train_file_names[2*i]
+        })
+
+    join_parallel_text(train_input_paths, first_language, second_language, 'english_bengali_parallel_train.txt')
+
+
 if __name__ == "__main__":
     # create_english_hindi_parallel_corpus()
-    create_english_portuguese_parallel_corpus()
+    # create_english_portuguese_parallel_corpus()
+    create_english_bengali_parallel_corpus()
