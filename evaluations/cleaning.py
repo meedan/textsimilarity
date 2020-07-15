@@ -1,5 +1,6 @@
 import re
-
+from indic_transliteration import sanscript
+from indic_transliteration.sanscript import transliterate
 import emoji
 
 uchr = chr  # Python 3
@@ -102,3 +103,7 @@ spam_list = {
            'முதலீடு', 'এমবিএ', 'வாய்ப்புகள்', 'வாய்ப்பு', 'செலுத்துதல்', 'விரும்பினார்', 'பாகங்கள்', 'பெரியவர்கள்',
            'பெரியவர்கள் குழு', 'appbrowzer', 'கேஜெட்டுகள்', 'infobrand', 'மொபைல்கள்', 'சலுகைகள்', 'ஒரே பிராண்ட்',
            'தொகுப்புகள்', 'செலுத்தப்பட்டது', 'கட்டணம்', 'ஆபாச', 'விளம்பர', 'பரிந்துரைகள்', 'பரிந்துரைப்பவர்', 'பதிவு']}
+
+
+def convert_from_hindi_latin(text):
+    return transliterate(text, sanscript.IAST, sanscript.DEVANAGARI)

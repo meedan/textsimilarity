@@ -9,3 +9,4 @@ kneed
 sentence-transformers
 fuzzywuzzy[speedup]
 pandas
+indic-transliteration
