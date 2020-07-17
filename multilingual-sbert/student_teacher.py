@@ -59,7 +59,7 @@ evaluators.append(evaluator_sts)
 # Train the model
 model.fit(train_objectives=[(train_dataloader, train_loss)],
           evaluator=evaluation.SequentialEvaluator(evaluators, main_score_function=lambda scores: scores[-1]),
-          epochs=1,
+          epochs=2,
           evaluation_steps=1000,
           warmup_steps=10000,
           scheduler='warmupconstant',
