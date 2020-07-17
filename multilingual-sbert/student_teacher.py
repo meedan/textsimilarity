@@ -47,12 +47,12 @@ train_loss = losses.MSELoss(model=model)
 # Test on STS 2017.en-de dataset using Spearman rank correlation
 logging.info("Read dev dataset")
 evaluators = []
-# claim_pair_reader = ClaimPairDataReader()
-# dev_data = SentencesDataset(examples=claim_pair_reader.get_examples(split='train', language='pt'), model=model)
-dev_file_path = 'test_southeast_asian_parallel_corpus.txt'
-dev_data = ParallelSentencesDataset(student_model=model, teacher_model=teacher_model)
-dev_data.load_data(dev_file_path)
-dev_dataloader = DataLoader(dev_data, shuffle=True, batch_size=train_batch_size)
+claim_pair_reader = ClaimPairDataReader()
+dev_data = SentencesDataset(examples=claim_pair_reader.get_examples(split='train', language='hi'), model=model)
+# dev_file_path = 'test_southeast_asian_parallel_corpus.txt'
+# dev_data = ParallelSentencesDataset(student_model=model, teacher_model=teacher_model)
+# dev_data.load_data(dev_file_path)
+dev_dataloader = DataLoader(dev_data, shuffle=False, batch_size=train_batch_size)
 evaluator_sts = evaluation.EmbeddingSimilarityEvaluator(dev_dataloader, name='SE Asian Test Data')
 evaluators.append(evaluator_sts)
 
