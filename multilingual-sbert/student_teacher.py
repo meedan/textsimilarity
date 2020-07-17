@@ -12,7 +12,7 @@ logging.basicConfig(format='%(asctime)s - %(message)s',
                     handlers=[LoggingHandler()])
 
 max_seq_length = 128
-train_batch_size = 48
+train_batch_size = 32
 
 logging.info("Load teacher model")
 teacher_model = SentenceTransformer('bert-base-nli-stsb-mean-tokens')
