@@ -68,31 +68,32 @@ def group_samples_by_language(samples):
 
 def generate_similarity_matrices():
     samples = load_samples('textsimilarity_samples.json')
+    # samples = random.sample(samples, 100)
     samples_per_language = group_samples_by_language(samples)
 
-    for language in samples_per_language:
-        # retrieving laser embeddings
-        print('retrieving laser embeddings for language: {}'.format(language))
-        sample_texts = [item['text'] for item in samples_per_language[language]]
-        embeddings = get_laser_embedding(sample_texts, language)
-
-        # generating laser matrices
-        print('calculating laser similarity matrix for language: {}'.format(language))
-        similarity_matrix = vcosine(embeddings, embeddings)
-        np.fill_diagonal(similarity_matrix, 0)
-        np.save('matrix_laser_{}'.format(language), similarity_matrix)
-
-        # retrieving sbert embeddings
-        print('retrieving sbert embeddings for language: {}'.format(language))
-        sbert_model = get_sbert_model(language if language != 'hi-Latn' else 'hi')
-        sample_texts = [item['text'] if language != 'hi-Latn' else item['transliterated_text'] for item in samples_per_language[language]]
-        embeddings = get_sbert_embedding(sbert_model, sample_texts)
-
-        # generating sbert matrices
-        print('calculating sbert similarity matrix for language: {}'.format(language))
-        similarity_matrix = vcosine(embeddings, embeddings)
-        np.fill_diagonal(similarity_matrix, 0)
-        np.save('matrix_sbert_{}'.format(language), similarity_matrix)
+    # for language in samples_per_language:
+    #     # retrieving laser embeddings
+    #     print('retrieving laser embeddings for language: {}'.format(language))
+    #     sample_texts = [item['text'] for item in samples_per_language[language]]
+    #     embeddings = get_laser_embedding(sample_texts, language)
+    #
+    #     # generating laser matrices
+    #     print('calculating laser similarity matrix for language: {}'.format(language))
+    #     similarity_matrix = vcosine(embeddings, embeddings)
+    #     np.fill_diagonal(similarity_matrix, 0)
+    #     np.save('matrices/matrix_laser_{}'.format(language), similarity_matrix)
+    #
+    #     # retrieving sbert embeddings
+    #     print('retrieving sbert embeddings for language: {}'.format(language))
+    #     sbert_model = get_sbert_model(language if language != 'hi-Latn' else 'hi')
+    #     sample_texts = [item['text'] if language != 'hi-Latn' else item['transliterated_text'] for item in samples_per_language[language]]
+    #     embeddings = get_sbert_embedding(sbert_model, sample_texts)
+    #
+    #     # generating sbert matrices
+    #     print('calculating sbert similarity matrix for language: {}'.format(language))
+    #     similarity_matrix = vcosine(embeddings, embeddings)
+    #     np.fill_diagonal(similarity_matrix, 0)
+    #     np.save('matrices/matrix_sbert_{}'.format(language), similarity_matrix)
 
     for language in samples_per_language:
         sample_size = len(samples_per_language[language])
@@ -100,11 +101,23 @@ def generate_similarity_matrices():
 
         print('calculating fuzzy similarity matrix for language: {}'.format(language))
         for i, sample in enumerate(samples_per_language[language]):
-            for j, other_sample in enumerate(samples_per_language[language]):
-                if i != j:
-                    similarity_matrix[i, j] = get_fuzzy_similarity_score(sample['text'], other_sample['text'])
+            for j in range(i+1, len(samples_per_language[language])):
+                other_sample = samples_per_language[language][j]
+                similarity_matrix[i, j] = get_fuzzy_similarity_score(sample['text'], other_sample['text'])
 
-        np.save('matrix_fuzzy_{}'.format(language), similarity_matrix)
+        np.save('matrices/matrix_fuzzy_{}'.format(language), similarity_matrix)
+
+
+def select_pairs_for_annotation():
+    samples = load_samples('textsimilarity_samples.json')
+    samples_per_language = group_samples_by_language(samples)
+
+    pairs_to_annotate = []
+    for language in samples_per_language:
+        laser_matrix = np.load('matrices/matrix_laser_{}.npy'.format(language))
+        sbert_matrix = np.load('matrices/matrix_sbert_{}.npy'.format(language))
+        fuzzy_matrix = np.load('matrices/matrix_fuzzy_{}.npy'.format(language))
+
 
 
 if __name__ == "__main__":
