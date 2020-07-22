@@ -1,7 +1,7 @@
 spacy
 gensim
 nltk
-laserembeddings[en, hi, pt]
+laserembeddings[en, hi, pt, ta, te, bn, mr, ml]
 pycld3
 sklearn
 emoji

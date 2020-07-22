@@ -68,7 +68,6 @@ def group_samples_by_language(samples):
 
 def generate_similarity_matrices():
     samples = load_samples('textsimilarity_samples.json')
-    samples = random.sample(samples, 100)
     samples_per_language = group_samples_by_language(samples)
 
     for language in samples_per_language:
