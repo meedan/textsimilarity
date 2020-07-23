@@ -6,7 +6,7 @@ from enum import Enum
 import cld3
 import numpy as np
 import pandas as pd
-from cleaning import remove_emoji, spam_list
+from cleaning import remove_emoji, spam_list, remove_urls
 
 random_seed = 72
 random.seed(random_seed)
@@ -27,6 +27,7 @@ def load_public_group_data(path, group_sample_size=15000,
                            languages=['en', 'hi', 'hi-Latn', 'mr', 'bn', 'ta', 'te', 'ml']):
     data = pd.read_csv(path, delimiter='\t', header=0)
     data = data.loc[data['language'].isin(languages)]
+    data['message_text'] = data['message_text'].apply(lambda text: remove_urls(text))
     data_with_language = []
     for language in languages:
         df = data.loc[data['language'] == language]
@@ -34,16 +35,6 @@ def load_public_group_data(path, group_sample_size=15000,
         data_with_language += [{'text': item['message_text'], 'language': language} for i, item in df.iterrows()]
 
     return data_with_language
-
-
-def get_partner_languages():
-    return {
-        'afp-checamos': ['pt', 'en'],
-        'africa-check': ['en'],
-        'afp-fact-check': ['en', 'hi', 'hi-Latn', 'mr', 'bn'],
-        'india-today': ['en', 'hi', 'hi-Latn', 'mr', 'bn'],
-        'boom-factcheck': ['en', 'hi', 'hi-Latn', 'mr', 'bn']
-    }
 
 
 def load_tip_line_claim_data(path):

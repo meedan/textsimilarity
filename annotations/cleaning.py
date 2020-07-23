@@ -3,6 +3,7 @@ from indic_transliteration import sanscript
 from indic_transliteration.sanscript import transliterate
 import emoji
 
+
 uchr = chr  # Python 3
 
 # Unicode 11.0 Emoji Component map (deemed safe to remove)
@@ -107,3 +108,15 @@ spam_list = {
 
 def convert_from_hindi_latin(text):
     return transliterate(text, sanscript.IAST, sanscript.DEVANAGARI)
+
+
+url_regex = re.compile(r'(?:http|ftp|https)://(?:[\w_-]+(?:(?:\.[\w_-]+)+))(?:[\w.,@?^=%&:/~+#-]*[\w@?^=%&/~+#-])?')
+
+
+def remove_urls(text):
+    while True:
+        result = url_regex.search(text)
+        if result == None:
+            break
+        text = text.replace(result.group(), '<URL>')
+    return text

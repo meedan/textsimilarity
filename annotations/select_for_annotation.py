@@ -6,7 +6,7 @@ from fuzzywuzzy import process
 import numpy as np
 import json
 import random
-from cleaning import convert_from_hindi_latin
+from cleaning import convert_from_hindi_latin, remove_urls
 
 
 laser = Laser()
@@ -55,6 +55,9 @@ def load_samples(path):
 
 
 def group_samples_by_language(samples):
+    for sample in samples:
+        sample['text'] = remove_urls(sample['text'])
+
     languages = set([item['language'] for item in samples])
     samples_per_language = {}
     for language in languages:
