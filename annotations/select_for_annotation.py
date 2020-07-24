@@ -82,8 +82,8 @@ def downsample(samples_per_language, downsample_size):
 
 def generate_similarity_matrices():
     samples = load_samples('textsimilarity_samples.json')
-    # samples = random.sample(samples, 100)
     samples_per_language = group_samples_by_language(samples)
+    samples_per_language = downsample(samples_per_language, 1000)
 
     for language in samples_per_language:
         # retrieving laser embeddings
@@ -125,7 +125,6 @@ def generate_similarity_matrices():
 def select_pairs_for_annotation():
     samples = load_samples('textsimilarity_samples.json')
     samples_per_language = group_samples_by_language(samples)
-    samples_per_language = downsample(samples_per_language, 1000)
 
     pairs_to_annotate = []
     for language in samples_per_language:
