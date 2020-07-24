@@ -128,15 +128,15 @@ def select_pairs_for_annotation():
 
     pairs_to_annotate = []
     for language in samples_per_language:
-        laser_matrix = np.load('matrices/matrix_laser_{}.npy'.format(language))
+        # laser_matrix = np.load('matrices/matrix_laser_{}.npy'.format(language))
         sbert_matrix = np.load('matrices/matrix_sbert_{}.npy'.format(language))
         # fuzzy_matrix = np.load('matrices/matrix_fuzzy_{}.npy'.format(language))
 
         index_pairs_to_annotate = set()
-        _select_indices_within_range(index_pairs_to_annotate, laser_matrix, 0.75, 0.9)
-        print('{} pairs in annotation set for lang={} with LASER'.format(len(index_pairs_to_annotate), language))
+        # _select_indices_within_range(index_pairs_to_annotate, laser_matrix, 0.75, 0.9)
+        # print('{} pairs in annotation set for lang={} with LASER'.format(len(index_pairs_to_annotate), language))
         _select_indices_within_range(index_pairs_to_annotate, sbert_matrix, 0.7, 0.9)
-        print('{} pairs in annotation set for lang={} when adding SBERT'.format(len(index_pairs_to_annotate), language))
+        print('{} pairs in annotation set for lang={} with SBERT'.format(len(index_pairs_to_annotate), language))
         # _select_indices_within_range(index_pairs_to_annotate, fuzzy_matrix, 0.7, 0.9)
 
         # removing cases with high overlap
