@@ -69,6 +69,17 @@ def group_samples_by_language(samples):
     return samples_per_language
 
 
+def downsample(samples_per_language, downsample_size):
+    random.seed(72)
+    for language in samples_per_language:
+        for sample in samples_per_language[language]:
+            sample['random_id'] = random.uniform(0, 1)
+        samples_per_language[language] = sorted(samples_per_language[language], key=lambda item: item['random_id'])
+        samples_per_language[language] = samples_per_language[language][:downsample_size]
+
+    return samples_per_language
+
+
 def generate_similarity_matrices():
     samples = load_samples('textsimilarity_samples.json')
     # samples = random.sample(samples, 100)
@@ -114,6 +125,7 @@ def generate_similarity_matrices():
 def select_pairs_for_annotation():
     samples = load_samples('textsimilarity_samples.json')
     samples_per_language = group_samples_by_language(samples)
+    samples_per_language = downsample(samples_per_language, 1000)
 
     pairs_to_annotate = []
     for language in samples_per_language:
@@ -122,19 +134,28 @@ def select_pairs_for_annotation():
         # fuzzy_matrix = np.load('matrices/matrix_fuzzy_{}.npy'.format(language))
 
         index_pairs_to_annotate = set()
-        _select_indices_within_range(index_pairs_to_annotate, laser_matrix)
-        _select_indices_within_range(index_pairs_to_annotate, sbert_matrix)
-        # _select_indices_within_range(index_pairs_to_annotate, fuzzy_matrix)
+        _select_indices_within_range(index_pairs_to_annotate, laser_matrix, 0.75, 0.9)
+        print('{} pairs in annotation set for lang={} with LASER'.format(len(index_pairs_to_annotate), language))
+        _select_indices_within_range(index_pairs_to_annotate, sbert_matrix, 0.7, 0.9)
+        print('{} pairs in annotation set for lang={} when adding SBERT'.format(len(index_pairs_to_annotate), language))
+        # _select_indices_within_range(index_pairs_to_annotate, fuzzy_matrix, 0.7, 0.9)
+
+        # removing cases with high overlap
+        for (i, j) in index_pairs_to_annotate:
+            if get_fuzzy_similarity_score(samples_per_language[language][i], samples_per_language[language][j]) >= 0.9:
+                index_pairs_to_annotate.remove((i, j))
+
+        print('{} pairs in annotation set for lang={} after cleaning up'.format(len(index_pairs_to_annotate), language))
 
         # find disputes between models and add them to annotation list
-        for i in range(len(laser_matrix)):
-            for j in range(i+1, len(laser_matrix[i])):
-                if abs(laser_matrix[i, j] - sbert_matrix[i, j]) >= 0.2:
-                    index_pairs_to_annotate.add((i, j))
-                # elif abs(laser_matrix[i, j] - fuzzy_matrix[i, j]) >= 0.3:
-                #     index_pairs_to_annotate.add((i, j))
-                # elif abs(sbert_matrix[i, j] - fuzzy_matrix[i, j]) >= 0.3:
-                #     index_pairs_to_annotate.add((i, j))
+        # for i in range(len(laser_matrix)):
+        #     for j in range(i+1, len(laser_matrix[i])):
+        #         if abs(laser_matrix[i, j] - sbert_matrix[i, j]) >= 0.2:
+        #             index_pairs_to_annotate.add((i, j))
+        #         elif abs(laser_matrix[i, j] - fuzzy_matrix[i, j]) >= 0.3:
+        #             index_pairs_to_annotate.add((i, j))
+        #         elif abs(sbert_matrix[i, j] - fuzzy_matrix[i, j]) >= 0.3:
+        #             index_pairs_to_annotate.add((i, j))
 
         pairs_to_annotate += [{'item1': samples_per_language[language][i], 'item2': samples_per_language[language][j], 'language': language} for (i, j) in index_pairs_to_annotate]
 
@@ -142,11 +163,11 @@ def select_pairs_for_annotation():
         json.dump(pairs_to_annotate, fp)
 
 
-def _select_indices_within_range(index_pairs_to_annotate, laser_matrix):
-    for i, row in enumerate(laser_matrix):
+def _select_indices_within_range(index_pairs_to_annotate, matrix, range_begin, range_end):
+    for i, row in enumerate(matrix):
         for j in range(i + 1, len(row)):
             item = row[j]
-            if 0.7 <= item <= 0.9:
+            if range_begin <= item <= range_end:
                 index_pairs_to_annotate.add((i, j))
 
 
