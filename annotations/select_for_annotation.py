@@ -9,10 +9,10 @@ import random
 from cleaning import convert_from_hindi_latin, remove_urls
 
 
-laser = Laser()
-indian_sbert = SentenceTransformer('../multilingual-sbert/models/se-asian-sbert')
-portuguese_sbert = SentenceTransformer('distiluse-base-multilingual-cased')
-english_sbert = SentenceTransformer('bert-base-nli-mean-tokens')
+# laser = Laser()
+# indian_sbert = SentenceTransformer('../multilingual-sbert/models/se-asian-sbert')
+# portuguese_sbert = SentenceTransformer('distiluse-base-multilingual-cased')
+# english_sbert = SentenceTransformer('bert-base-nli-mean-tokens')
 
 
 def get_sbert_model(language):
@@ -180,6 +180,33 @@ def _select_indices_within_range(index_pairs_to_annotate, matrix, range_begin, r
                 index_pairs_to_annotate.add((i, j))
 
 
+def evaluate_selected_pairs():
+    samples = load_samples('textsimilarity_samples.json')
+    samples_per_language = group_samples_by_language(samples)
+    for language in samples_per_language:
+        matrix = np.load('matrices/matrix_sbert_{}.npy'.format(language))
+        over_90 = (matrix >= 0.9).sum() // 2
+        range_80_90 = ((matrix >= 0.8) & (matrix < 0.9)).sum() // 2
+        range_70_80 = ((matrix >= 0.7) & (matrix < 0.8)).sum() // 2
+
+        print('lang={}, over 90: {}, between 80 to 90: {}, between 70 to 80: {}'.format(language, over_90, range_80_90, range_70_80))
+
+        examples = []
+        for i in range(len(matrix)):
+            for j in range(i+1, len(matrix)):
+                if matrix[i, j] >= 0.9:
+                    examples.append([samples_per_language['bn'][i], samples_per_language['bn'][j]])
+
+        examples = random.sample(examples, 20)
+        for example in examples:
+            print(example[0])
+            print(example[1])
+            print('-------------------------------')
+
+        print('---------------------------------------------------------------------------------------------')
+
+
 if __name__ == "__main__":
     generate_similarity_matrices()
     select_pairs_for_annotation()
+    evaluate_selected_pairs()

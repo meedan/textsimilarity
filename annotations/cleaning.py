@@ -120,3 +120,7 @@ def remove_urls(text):
             break
         text = text.replace(result.group(), '<URL>')
     return text
+
+
+def contains_url(text):
+    return url_regex.search(text) is not None

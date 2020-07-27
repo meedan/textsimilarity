@@ -6,7 +6,7 @@ from enum import Enum
 import cld3
 import numpy as np
 import pandas as pd
-from cleaning import remove_emoji, spam_list, remove_urls
+from cleaning import remove_emoji, spam_list, remove_urls, contains_url
 
 random_seed = 72
 random.seed(random_seed)
@@ -27,12 +27,13 @@ def load_public_group_data(path, group_sample_size=15000,
                            languages=['en', 'hi', 'hi-Latn', 'mr', 'bn', 'ta', 'te', 'ml']):
     data = pd.read_csv(path, delimiter='\t', header=0)
     data = data.loc[data['language'].isin(languages)]
-    data['message_text'] = data['message_text'].apply(lambda text: remove_urls(text))
+    # data['message_text'] = data['message_text'].apply(lambda text: remove_urls(text))
+    data.drop(data[data['message_text'].map(contains_url)].index, inplace=True)
     data_with_language = []
     for language in languages:
         df = data.loc[data['language'] == language]
         df = df.sample(min(group_sample_size, len(df)), random_state=random_seed)
-        data_with_language += [{'text': item['message_text'], 'language': language} for i, item in df.iterrows()]
+        data_with_language += [{'text': item['message_text'], 'language': language, 'source': SourceName.PUBLICGROUPS.value} for i, item in df.iterrows()]
 
     return data_with_language
 
@@ -58,8 +59,7 @@ def load_factcheck_data(path):
     with open(path) as f:
         facts = json.load(f)
     facts = [item for item in facts if len(item['_source']['claim_review_headline']) > 20]
-    return \
-        [{'text': item['_source']['claim_review_headline'], 'language': item['_source']['language']} for item in facts]
+    return [{'text': item['_source']['claim_review_headline'], 'language': item['_source']['language'], 'source': SourceName.FACTCHECK.value} for item in facts]
 
 
 def group_tiplines_by_language(tip_line_requests,
@@ -73,10 +73,10 @@ def group_tiplines_by_language(tip_line_requests,
             tip['language'] = lang_data.language
     tip_line_requests = [tip for tip in tip_line_requests if
                          tip['text'] != 'NA' and not tip['text'].isspace() and 'language' in tip and len(
-                             tip['text']) > 20]
+                             tip['text']) > 20 and not contains_url(tip['text'])]
 
-    return [{'text': item['text'], 'language': item['language']} for item in tip_line_requests if
-            item['language'] in languages]
+    return [{'text': item['text'], 'language': item['language'], 'source': SourceName.TIPLINE.value}
+            for item in tip_line_requests if item['language'] in languages]
 
 
 def cosine_sim(vecA, vecB):
