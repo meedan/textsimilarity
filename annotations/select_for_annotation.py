@@ -9,10 +9,10 @@ import random
 from cleaning import convert_from_hindi_latin, remove_urls
 
 
-# laser = Laser()
-# indian_sbert = SentenceTransformer('../multilingual-sbert/models/se-asian-sbert')
-# portuguese_sbert = SentenceTransformer('distiluse-base-multilingual-cased')
-# english_sbert = SentenceTransformer('bert-base-nli-mean-tokens')
+laser = Laser()
+indian_sbert = SentenceTransformer('../multilingual-sbert/models/se-asian-sbert')
+portuguese_sbert = SentenceTransformer('distiluse-base-multilingual-cased')
+english_sbert = SentenceTransformer('bert-base-nli-mean-tokens')
 
 
 def get_sbert_model(language):
