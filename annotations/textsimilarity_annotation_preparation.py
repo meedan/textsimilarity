@@ -100,14 +100,14 @@ def sample_data_from_all_sources():
     for language in languages:
         sample_carry = 1 # 1 because 1000 isn't divisble by 3 and we take 1 more sample out of public groups data
         language_tip_line_data = [item for item in tipline_data if item['language'] == language]
-        tipline_sample = random.sample(language_tip_line_data, min(group_sample_size // 3, len(language_tip_line_data)))
-        if len(tipline_sample) < group_sample_size // 3:
-            sample_carry += group_sample_size // 3 - len(tipline_sample)
+        language_sample_size = group_sample_size // 3 if language != 'pt' else group_sample_size // 2
+        tipline_sample = random.sample(language_tip_line_data, min(language_sample_size, len(language_tip_line_data)))
+        if len(tipline_sample) < language_sample_size:
+            sample_carry += language_sample_size - len(tipline_sample)
         language_factcheck_data = [item for item in factcheck_data if item['language'] == language]
-        factcheck_sample = random.sample(language_factcheck_data,
-                                         min(group_sample_size // 3, len(language_factcheck_data)))
-        if len(factcheck_sample) < group_sample_size // 3:
-            sample_carry += group_sample_size // 3 - len(factcheck_sample)
+        factcheck_sample = random.sample(language_factcheck_data, min(language_sample_size, len(language_factcheck_data)))
+        if len(factcheck_sample) < language_sample_size:
+            sample_carry += language_sample_size - len(factcheck_sample)
         language_public_groups_data = [item for item in public_groups_data if item['language'] == language]
         public_groups_sample = random.sample(language_public_groups_data, min(group_sample_size // 3 + sample_carry,
                                                                               len(language_public_groups_data)))
