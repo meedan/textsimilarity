@@ -88,7 +88,7 @@ def cosine_sim(vecA, vecB):
 
 
 def sample_data_from_all_sources():
-    group_sample_size = 15000
+    group_sample_size = 1000
     tipline_data = load_tip_line_claim_data('../data/tiplines.csv')
     public_groups_data = load_public_group_data('../data/pg_text_spamfree.csv')
     factcheck_data = load_factcheck_data('../data/claim_reviews_with_language.json')
@@ -98,7 +98,7 @@ def sample_data_from_all_sources():
                            replace=False).tolist()
     id_idx = 0
     for language in languages:
-        sample_carry = 0
+        sample_carry = 1 # 1 because 1000 isn't divisble by 3 and we take 1 more sample out of public groups data
         language_tip_line_data = [item for item in tipline_data if item['language'] == language]
         tipline_sample = random.sample(language_tip_line_data, min(group_sample_size // 3, len(language_tip_line_data)))
         if len(tipline_sample) < group_sample_size // 3:

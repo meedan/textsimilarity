@@ -83,7 +83,7 @@ def downsample(samples_per_language, downsample_size):
 def generate_similarity_matrices():
     samples = load_samples('textsimilarity_samples.json')
     samples_per_language = group_samples_by_language(samples)
-    samples_per_language = downsample(samples_per_language, 1000)
+    # samples_per_language = downsample(samples_per_language, 1000)
 
     for language in samples_per_language:
         # retrieving laser embeddings
@@ -140,13 +140,18 @@ def select_pairs_for_annotation():
         # _select_indices_within_range(index_pairs_to_annotate, fuzzy_matrix, 0.7, 0.9)
 
         # removing cases with high overlap
-        pairs_to_be_removed = []
+        pairs_to_be_removed_below = []
+        pairs_to_be_removed_above = []
         for (i, j) in index_pairs_to_annotate:
             fuzzy_score = get_fuzzy_similarity_score(samples_per_language[language][i], samples_per_language[language][j])
-            if fuzzy_score <= 0.2 or fuzzy_score >= 0.9:
-                pairs_to_be_removed.append((i, j))
+            if fuzzy_score <= 0.2:
+                pairs_to_be_removed_below.append((i, j))
+            elif fuzzy_score >= 0.9:
+                pairs_to_be_removed_above.append((i, j))
 
-        for (i, j) in pairs_to_be_removed:
+        print('{} pairs to be removed with fuzzy similarity below 0.2'.format(len(pairs_to_be_removed_below)))
+        print('{} pairs to be removed with fuzzy similarity above 0.9'.format(len(pairs_to_be_removed_above)))
+        for (i, j) in pairs_to_be_removed_above + pairs_to_be_removed_below:
             index_pairs_to_annotate.remove((i, j))
 
         print('{} pairs in annotation set for lang={} after cleaning up'.format(len(index_pairs_to_annotate), language))
@@ -176,5 +181,5 @@ def _select_indices_within_range(index_pairs_to_annotate, matrix, range_begin, r
 
 
 if __name__ == "__main__":
-    # generate_similarity_matrices()
+    generate_similarity_matrices()
     select_pairs_for_annotation()
