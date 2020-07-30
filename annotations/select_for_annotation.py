@@ -1,51 +1,7 @@
-from laserembeddings import Laser
-from scipy.spatial import distance
-from sentence_transformers import SentenceTransformer
-from fuzzywuzzy import fuzz
-from fuzzywuzzy import process
 import numpy as np
 import json
 import random
-from cleaning import convert_from_hindi_latin, remove_urls
-
-
-laser = Laser()
-indian_sbert = SentenceTransformer('../multilingual-sbert/models/se-asian-sbert')
-portuguese_sbert = SentenceTransformer('distiluse-base-multilingual-cased')
-english_sbert = SentenceTransformer('bert-base-nli-mean-tokens')
-
-
-def get_sbert_model(language):
-    if language == 'pt':
-        return portuguese_sbert
-    elif language in ['hi', 'ml', 'mr', 'ta', 'te', 'bn', 'hi-Latn']:
-        return indian_sbert
-    elif language == 'en':
-        return english_sbert
-    else:
-        return None
-
-
-def vcosine(u, v):
-    return abs(1 - distance.cdist(u, v, 'cosine'))
-
-
-def get_sbert_embedding(model, text):
-    if isinstance(text, list) or isinstance(text, tuple):
-        return model.encode(text)
-    else:
-        return model.encode([text])
-
-
-def get_laser_embedding(text, lang):
-    if isinstance(text, list) or isinstance(text, tuple):
-        return laser.embed_sentences(text, lang=lang)
-    else:
-        return laser.embed_sentences([text], lang=lang)
-
-
-def get_fuzzy_similarity_score(a, b):
-    return fuzz.partial_ratio(a, b) / 100
+from utils import convert_from_hindi_latin, get_laser_embedding, vcosine, get_sbert_embedding, get_fuzzy_similarity_score
 
 
 def load_samples(path):
@@ -55,9 +11,6 @@ def load_samples(path):
 
 
 def group_samples_by_language(samples):
-    for sample in samples:
-        sample['text'] = remove_urls(sample['text'])
-
     languages = set([item['language'] for item in samples])
     samples_per_language = {}
     for language in languages:
@@ -99,9 +52,8 @@ def generate_similarity_matrices():
 
         # retrieving sbert embeddings
         print('retrieving sbert embeddings for language: {}'.format(language))
-        sbert_model = get_sbert_model(language if language != 'hi-Latn' else 'hi')
         sample_texts = [item['text'] if language != 'hi-Latn' else item['transliterated_text'] for item in samples_per_language[language]]
-        embeddings = get_sbert_embedding(sbert_model, sample_texts)
+        embeddings = get_sbert_embedding(sample_texts, language if language != 'hi-Latn' else 'hi')
 
         # generating sbert matrices
         print('calculating sbert similarity matrix for language: {}'.format(language))
@@ -195,7 +147,7 @@ def evaluate_selected_pairs():
         for i in range(len(matrix)):
             for j in range(i+1, len(matrix)):
                 if matrix[i, j] >= 0.9:
-                    examples.append([samples_per_language['bn'][i], samples_per_language['bn'][j]])
+                    examples.append([samples_per_language[language][i], samples_per_language[language][j]])
 
         examples = random.sample(examples, 20)
         for example in examples:

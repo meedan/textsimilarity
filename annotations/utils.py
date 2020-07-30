@@ -2,7 +2,17 @@ import re
 from indic_transliteration import sanscript
 from indic_transliteration.sanscript import transliterate
 import emoji
+from laserembeddings import Laser
+from scipy.spatial import distance
+from sentence_transformers import SentenceTransformer
+from fuzzywuzzy import fuzz
+from fuzzywuzzy import process
 
+
+laser = Laser()
+indian_sbert = SentenceTransformer('../multilingual-sbert/models/se-asian-sbert')
+portuguese_sbert = SentenceTransformer('distiluse-base-multilingual-cased')
+english_sbert = SentenceTransformer('bert-base-nli-mean-tokens')
 
 uchr = chr  # Python 3
 
@@ -111,6 +121,8 @@ def convert_from_hindi_latin(text):
 
 
 url_regex = re.compile(r'(?:http|ftp|https)://(?:[\w_-]+(?:(?:\.[\w_-]+)+))(?:[\w.,@?^=%&:/~+#-]*[\w@?^=%&/~+#-])?')
+# this regex should only be used to identify whether a phone number exists, it doesn't work well for extracting the number
+phone_no_regex = re.compile(r'(\d{3}[-\.\s]??\d{3}[-\.\s]??\d{4}|\(\d{3}\)\s*\d{3}[-\.\s]??\d{4}|\d{3}[-\.\s]??\d{4})')
 
 
 def remove_urls(text):
@@ -124,3 +136,41 @@ def remove_urls(text):
 
 def contains_url(text):
     return url_regex.search(text) is not None
+
+
+def contains_phone_number(text):
+    return phone_no_regex.search(text) is not None
+
+
+def get_sbert_model(language):
+    if language == 'pt':
+        return portuguese_sbert
+    elif language in ['hi', 'ml', 'mr', 'ta', 'te', 'bn', 'hi-Latn']:
+        return indian_sbert
+    elif language == 'en':
+        return english_sbert
+    else:
+        return None
+
+
+def vcosine(u, v):
+    return abs(1 - distance.cdist(u, v, 'cosine'))
+
+
+def get_sbert_embedding(text, language):
+    model = get_sbert_model(language)
+    if isinstance(text, list) or isinstance(text, tuple):
+        return model.encode(text)
+    else:
+        return model.encode([text])
+
+
+def get_laser_embedding(text, lang):
+    if isinstance(text, list) or isinstance(text, tuple):
+        return laser.embed_sentences(text, lang=lang)
+    else:
+        return laser.embed_sentences([text], lang=lang)
+
+
+def get_fuzzy_similarity_score(a, b):
+    return fuzz.partial_ratio(a, b) / 100
