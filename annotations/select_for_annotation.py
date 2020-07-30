@@ -34,7 +34,7 @@ def downsample(samples_per_language, downsample_size):
 
 
 def generate_similarity_matrices():
-    samples = load_samples('textsimilarity_samples.json')
+    samples = load_samples('textsimilarity_samples_es.json')
     samples_per_language = group_samples_by_language(samples)
     # samples_per_language = downsample(samples_per_language, 1000)
 
@@ -75,7 +75,7 @@ def generate_similarity_matrices():
 
 
 def select_pairs_for_annotation():
-    samples = load_samples('textsimilarity_samples.json')
+    samples = load_samples('textsimilarity_samples_es.json')
     samples_per_language = group_samples_by_language(samples)
 
     pairs_to_annotate = []
@@ -133,7 +133,7 @@ def _select_indices_within_range(index_pairs_to_annotate, matrix, range_begin, r
 
 
 def evaluate_selected_pairs():
-    samples = load_samples('textsimilarity_samples.json')
+    samples = load_samples('textsimilarity_samples_es.json')
     samples_per_language = group_samples_by_language(samples)
     for language in samples_per_language:
         matrix = np.load('matrices/matrix_sbert_{}.npy'.format(language))

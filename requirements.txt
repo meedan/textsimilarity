@@ -10,3 +10,4 @@ sentence-transformers
 fuzzywuzzy[speedup]
 pandas
 indic-transliteration
+elasticsearch
