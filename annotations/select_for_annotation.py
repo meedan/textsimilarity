@@ -16,6 +16,9 @@ def group_samples_by_language(samples):
     for language in languages:
         samples_per_language[language] = [item for item in samples if item['language'] == language]
 
+    if 'hi-Latn' not in samples_per_language:
+        return samples_per_language
+
     for sample in samples_per_language['hi-Latn']:
         sample['transliterated_text'] = convert_from_hindi_latin(sample['text'])
 
