@@ -6,7 +6,7 @@ from enum import Enum
 import cld3
 import numpy as np
 import pandas as pd
-from utils import remove_emoji, spam_list, contains_url, contains_phone_number, get_sbert_embedding, get_fuzzy_similarity_score, vcosine
+from utils import remove_emoji, spam_list, contains_url, contains_phone_number, get_sbert_embedding, get_fuzzy_similarity_score, vcosine, has_too_many_numbers
 from elasticsearch import Elasticsearch
 from elasticsearch import helpers
 
@@ -25,19 +25,33 @@ def is_spam(text, lang):
     return len([item for item in spam_list[lang] if item in text]) > 0
 
 
+def remove_mixed_language_items(samples):
+    to_be_removed = []
+    for i, item in enumerate(samples):
+        language_info = cld3.get_language(item['text'])
+        if language_info.probability < 0.95:
+            to_be_removed.append(i)
+    for i in reversed(range(len(to_be_removed))):
+        idx = to_be_removed[i]
+        del samples[idx]
+    return samples
+
+
 def load_public_group_data(path, group_sample_size=15000,
-                           languages=['en', 'hi', 'hi-Latn', 'mr', 'bn', 'ta', 'te', 'ml']):
+                           languages=['en', 'hi', 'mr', 'bn', 'ta', 'te', 'ml']):
     data = pd.read_csv(path, delimiter='\t', header=0)
     data = data.loc[data['language'].isin(languages)]
     # data['message_text'] = data['message_text'].apply(lambda text: remove_urls(text))
     data.drop(data[(data['message_text'].map(contains_phone_number)) | (data['message_text'].map(contains_url)) |
-                   (data['message_text'].map(len) > 1200) | (data['message_text'].map(len) < 60)].index, inplace=True)
+                   (data['message_text'].map(len) > 1200) | (data['message_text'].map(len) < 60) |
+                   (data['message_text'].map(has_too_many_numbers))].index, inplace=True)
     data_with_language = []
     for language in languages:
         df = data.loc[data['language'] == language]
         df = df.sample(min(group_sample_size, len(df)), random_state=random_seed)
         data_with_language += [{'text': item['message_text'], 'language': language, 'source': SourceName.PUBLICGROUPS.value} for i, item in df.iterrows()]
 
+    data_with_language = remove_mixed_language_items(data_with_language)
     return data_with_language
 
 
@@ -62,17 +76,19 @@ def load_factcheck_data(path):
     with open(path) as f:
         facts = json.load(f)
     facts = [item for item in facts if len(item['_source']['claim_review_headline']) > 20]
-    return [{'text': item['_source']['claim_review_headline'], 'language': item['_source']['language'], 'source': SourceName.FACTCHECK.value} for item in facts]
+    facts = [{'text': item['_source']['claim_review_headline'], 'language': item['_source']['language'], 'source': SourceName.FACTCHECK.value} for item in facts]
+    facts = remove_mixed_language_items(facts)
+    return facts
 
 
 def group_tiplines_by_language(tip_line_requests,
-                               languages=['en', 'pt', 'hi', 'hi-Latn', 'mr', 'bn', 'ta', 'te', 'ml']):
+                               languages=['en', 'pt', 'hi', 'mr', 'bn', 'ta', 'te', 'ml']):
     for tip in tip_line_requests:
         tip['text'] = remove_emoji(
             tip['media_text'] if tip['media_text'] != 'NA' and len(tip['media_text']) >= len(tip['media_title']) else
             tip['media_title'])
         lang_data = cld3.get_language(tip['text'])
-        if lang_data is not None:
+        if lang_data is not None and lang_data.probability >= 0.95:
             tip['language'] = lang_data.language
     tip_line_requests = [tip for tip in tip_line_requests if
                          tip['text'] != 'NA' and not tip['text'].isspace() and 'language' in tip and (
@@ -96,7 +112,7 @@ def sample_data_from_all_sources():
     tipline_data = load_tip_line_claim_data('../data/tiplines.csv')
     public_groups_data = load_public_group_data('../data/pg_text_spamfree.csv')
     factcheck_data = load_factcheck_data('../data/claim_reviews_with_language.json')
-    languages = ['en', 'pt', 'hi', 'hi-Latn', 'mr', 'bn', 'ta', 'te', 'ml']
+    languages = ['en', 'pt', 'hi', 'mr', 'bn', 'ta', 'te', 'ml']
     samples = []
     ids = np.random.choice(range(len(languages) * group_sample_size), size=len(languages) * group_sample_size,
                            replace=False).tolist()
@@ -130,7 +146,7 @@ def sample_with_elasticsearch():
     tipline_data = load_tip_line_claim_data('../data/tiplines.csv')
     public_groups_data = load_public_group_data('../data/pg_text_spamfree.csv')
     factcheck_data = load_factcheck_data('../data/claim_reviews_with_language.json')
-    languages = ['en', 'pt', 'hi', 'hi-Latn', 'mr', 'bn', 'ta', 'te', 'ml']
+    languages = ['en', 'pt', 'hi', 'mr', 'bn', 'ta', 'te', 'ml']
     [es.indices.delete(index=language.lower(), ignore=[400, 404]) for language in languages]
     samples = []
     for language in languages:

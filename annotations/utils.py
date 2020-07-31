@@ -123,6 +123,7 @@ def convert_from_hindi_latin(text):
 url_regex = re.compile(r'(?:http|ftp|https)://(?:[\w_-]+(?:(?:\.[\w_-]+)+))(?:[\w.,@?^=%&:/~+#-]*[\w@?^=%&/~+#-])?')
 # this regex should only be used to identify whether a phone number exists, it doesn't work well for extracting the number
 phone_no_regex = re.compile(r'(\d{3}[-\.\s]??\d{3}[-\.\s]??\d{4}|\(\d{3}\)\s*\d{3}[-\.\s]??\d{4}|\d{3}[-\.\s]??\d{4})')
+numbers_regex = re.compile(r'\d+')
 
 
 def remove_urls(text):
@@ -140,6 +141,10 @@ def contains_url(text):
 
 def contains_phone_number(text):
     return phone_no_regex.search(text) is not None
+
+
+def has_too_many_numbers(text):
+    return len(numbers_regex.findall(text)) > 6
 
 
 def get_sbert_model(language):
