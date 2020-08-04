@@ -142,7 +142,7 @@ def sample_data_from_all_sources():
 
 def sample_with_elasticsearch():
     es = Elasticsearch()
-    group_sample_size = 1000
+    group_sample_size = 1500
     tipline_data = load_tip_line_claim_data('../data/tiplines.csv')
     public_groups_data = load_public_group_data('../data/pg_text_spamfree.csv')
     factcheck_data = load_factcheck_data('../data/claim_reviews_with_language.json')
@@ -170,7 +170,7 @@ def sample_with_elasticsearch():
         print('Populated DB for language={}'.format(language))
 
         # sampling
-        sample_carry = 2  # 1 because 500 isn't divisble by 3 and we take 2 more sample out of public groups data
+        sample_carry = 0
         language_sample_size = group_sample_size // 6 if language != 'pt' else group_sample_size // 4
         tipline_sample = random.sample(language_tip_line_data, min(language_sample_size, len(language_tip_line_data)))
         if len(tipline_sample) < language_sample_size:
